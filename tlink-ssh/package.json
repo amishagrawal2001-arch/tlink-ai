@@ -22,7 +22,7 @@
   "devDependencies": {
     "@types/node": "20.3.1",
     "ansi-colors": "^4.1.1",
-    "strip-ansi": "^7.0.0"
+    "strip-ansi": "^7.1.2"
   },
   "dependencies": {
     "@luminati-io/socksv5": "^0.0.7",
