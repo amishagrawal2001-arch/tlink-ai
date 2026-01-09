@@ -65,7 +65,7 @@ This README is also available in: <a  href="./README.es-ES.md">:es: Spanish</a> 
 
 <a name="about"></a>
 
-# What Tlink is and isn't
+# What Tlink AI is and isn't
 
 * **Tlink AI is** an enhanced terminal emulator with AI integration, code editing capabilities, and advanced features - an alternative to Windows' standard terminal (conhost), PowerShell ISE, PuTTY, macOS Terminal.app and iTerm
 
@@ -120,7 +120,7 @@ Tlink will run as a portable app on Windows, if you create a `data` folder in th
 
 # Plugins
 
-Plugins and themes can be installed directly from the Settings view inside Tlink.
+Plugins and themes can be installed directly from the Settings view inside Tlink AI.
 
 * [docker](https://github.com/Eugeny/tlink-docker) - connect to Docker containers
 * [title-control](https://github.com/kbjr/terminus-title-control) - allows modifying the title of the terminal tabs by providing a prefix, suffix, and/or strings to be removed
