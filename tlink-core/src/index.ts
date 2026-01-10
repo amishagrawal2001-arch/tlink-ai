@@ -30,6 +30,7 @@ import { UnlockVaultModalComponent } from './components/unlockVaultModal.compone
 import { WelcomeTabComponent } from './components/welcomeTab.component'
 import { TransfersMenuComponent } from './components/transfersMenu.component'
 import { ProfileIconComponent } from './components/profileIcon.component'
+import { ShareSessionModalComponent } from './components/shareSessionModal.component'
 
 import { AutofocusDirective } from './directives/autofocus.directive'
 import { AlwaysVisibleTypeaheadDirective } from './directives/alwaysVisibleTypeahead.directive'
@@ -132,6 +133,7 @@ const PROVIDERS = [
         UnlockVaultModalComponent,
         WelcomeTabComponent,
         TransfersMenuComponent,
+        ShareSessionModalComponent,
         DropZoneDirective,
         CdkAutoDropGroup,
         ProfileIconComponent,
@@ -278,6 +280,10 @@ export { AppRootComponent as bootstrap }
 export * from './api'
 export { AppHotkeyProvider }
 export { ColorPickerModalComponent } from './components/colorPickerModal.component'
+export { ShareSessionModalComponent } from './components/shareSessionModal.component'
+export { WorkspaceService } from './services/workspace.service'
+export { SessionSharingService } from './services/sessionSharing.service'
+export * from './api/workspace'
 
 // Deprecations
 export { ToolbarButton as IToolbarButton } from './api'

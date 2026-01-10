@@ -143,7 +143,7 @@ app.on('ready', async () => {
         ]))
     }
 
-    application.init()
+    await application.init()
 
     const window = await application.newWindow({ hidden: argv.hidden })
     await window.ready

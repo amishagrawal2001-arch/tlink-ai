@@ -1,0 +1,40 @@
+.modal-header
+    h5.modal-title {{ 'Share Terminal Session' | translate }}
+    button.btn.btn-sm.btn-link.p-0(
+        type='button',
+        (click)='close()',
+        aria-label='Close',
+        style='width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;'
+    )
+        i.fas.fa-times
+.modal-body
+    .mb-3
+        label.form-label {{ 'Shareable URL' | translate }}
+        .input-group
+            input.form-control(
+                #urlInput,
+                [value]='shareUrl',
+                readonly,
+                (click)='$event.target.select()'
+            )
+            button.btn.btn-outline-secondary(
+                type='button',
+                (click)='copyUrl()'
+            )
+                i.fas.fa-copy.mr-2
+                | {{ 'Copy' | translate }}
+    .mb-3
+        .d-flex.justify-content-between.align-items-center
+            span {{ 'Mode' | translate }}:
+            strong {{ mode === 'read-only' ? ('Read-only' | translate) : ('Interactive' | translate) }}
+    .mb-3(*ngIf='viewers > 0')
+        .d-flex.justify-content-between.align-items-center
+            span {{ 'Active viewers' | translate }}:
+            strong {{ viewers }}
+    .mb-3(*ngIf='expiresIn')
+        .d-flex.justify-content-between.align-items-center
+            span {{ 'Expires in' | translate }}:
+            strong {{ expiresIn }} {{ 'minutes' | translate }}
+.modal-footer
+    button.btn.btn-primary((click)='close()') {{ 'Close' | translate }}
+

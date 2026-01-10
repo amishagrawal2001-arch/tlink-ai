@@ -31,6 +31,19 @@ title-bar(
                 ngbTooltip='AI Chat'
             )
                 i.fas.fa-comments
+            button.left-dock-button(
+                type='button',
+                [class.active]='websocketServerRunning',
+                [class.disabled]='websocketServerStarting',
+                (click)='toggleWebSocketServer()',
+                [ngbTooltip]='websocketServerRunning ? "Session sharing server running on port " + websocketServerPort + " (click to stop)" : "Start session sharing server"'
+            )
+                i.fas(
+                    [class.fa-plug]='!websocketServerRunning && !websocketServerStarting',
+                    [class.fa-power-off]='websocketServerRunning && !websocketServerStarting',
+                    [class.fa-spinner]='websocketServerStarting',
+                    [class.fa-spin]='websocketServerStarting'
+                )
         .left-dock-section.left-dock-bottom
             button.left-dock-button(
                 type='button',

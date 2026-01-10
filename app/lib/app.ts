@@ -10,6 +10,7 @@ import { saveConfig } from './config'
 import { Window, WindowOptions } from './window'
 import { pluginManager } from './pluginManager'
 import { PTYManager } from './pty'
+import { getSessionSharingServer } from './sessionSharingServer'
 
 /* eslint-disable block-scoped-var */
 
@@ -20,6 +21,7 @@ try {
 export class Application {
     private tray?: Tray
     private ptyManager = new PTYManager()
+    private sessionSharingServer = getSessionSharingServer()
     private windows: Window[] = []
     private globalHotkey$ = new Subject<void>()
     private quitRequested = false
@@ -30,6 +32,7 @@ export class Application {
         remote.initialize()
         this.useBuiltinGraphics()
         this.ptyManager.init(this)
+        this.initSessionSharing()
 
         ipcMain.handle('app:save-config', async (event, config) => {
             await saveConfig(config)
@@ -93,6 +96,7 @@ export class Application {
         }
 
         app.on('before-quit', () => {
+            this.sessionSharingServer.stop()
             this.quitRequested = true
         })
 
@@ -103,7 +107,183 @@ export class Application {
         })
     }
 
-    init (): void {
+    /**
+     * Initialize session sharing server and IPC handlers
+     */
+    private initSessionSharing (): void {
+        // IPC handler: Get WebSocket server URL
+        ipcMain.handle('session-sharing:get-server-url', async (_event, usePublicUrl: boolean = false) => {
+            return this.sessionSharingServer.getWebSocketUrl(usePublicUrl)
+        })
+
+        // IPC handler: Register a shared session
+        ipcMain.handle('session-sharing:register', async (_event, sessionId: string, token: string, mode: string, password?: string, expiresIn?: number) => {
+            this.sessionSharingServer.registerSession(sessionId, token, mode as 'read-only' | 'interactive', password, expiresIn)
+        })
+
+        // IPC handler: Unregister a shared session
+        ipcMain.handle('session-sharing:unregister', async (_event, sessionId: string) => {
+            this.sessionSharingServer.unregisterSession(sessionId)
+        })
+
+        // IPC handler: Broadcast terminal output
+        ipcMain.on('session-sharing:broadcast-output', (_event, sessionId: string, data: Buffer) => {
+            this.sessionSharingServer.broadcastOutput(sessionId, Buffer.from(data))
+        })
+
+        // IPC handler: Forward input from viewer (interactive mode)
+        ipcMain.on('session-sharing:forward-input', (_event, sessionId: string, data: Buffer) => {
+            // Note: We'll need to get the terminal instance to write input
+            // For now, emit an event that can be handled
+            this.broadcast('session-sharing:terminal-input', sessionId, Buffer.from(data))
+        })
+
+        // IPC handler: Get viewer count
+        ipcMain.handle('session-sharing:get-viewer-count', async (_event, sessionId: string) => {
+            return this.sessionSharingServer.getViewerCount(sessionId)
+        })
+
+        // IPC handler: Get server status
+        ipcMain.handle('session-sharing:get-server-status', async () => {
+            return {
+                isRunning: this.sessionSharingServer.isStarted(),
+                port: this.sessionSharingServer.getPort(),
+                host: this.sessionSharingServer.getHost(),
+                url: this.sessionSharingServer.getWebSocketUrl(false),
+                publicUrl: this.sessionSharingServer.getPublicUrl(),
+                activeSessions: this.sessionSharingServer.getActiveSessionCount(),
+            }
+        })
+
+        // IPC handler: Check if server is running
+        ipcMain.handle('session-sharing:is-server-running', async () => {
+            return this.sessionSharingServer.isStarted()
+        })
+
+        // IPC handler: Start server
+        ipcMain.handle('session-sharing:start-server', async (_event, port?: number, host?: string) => {
+            try {
+                const sessionSharingConfig = this.configStore.sessionSharing || {}
+                const bindHost = host || sessionSharingConfig.bindHost || '0.0.0.0'
+                const bindPort = port || sessionSharingConfig.port || 0
+                const actualPort = await this.sessionSharingServer.start(bindPort, bindHost)
+                // Broadcast status change
+                this.broadcast('session-sharing:server-status-changed', {
+                    isRunning: true,
+                    port: actualPort,
+                    host: bindHost,
+                    url: this.sessionSharingServer.getWebSocketUrl(false),
+                    publicUrl: this.sessionSharingServer.getPublicUrl(),
+                })
+                return { success: true, port: actualPort, host: bindHost }
+            } catch (error: any) {
+                console.error('Failed to start session sharing server:', error)
+                return { success: false, error: error.message }
+            }
+        })
+
+        // IPC handler: Stop server
+        ipcMain.handle('session-sharing:stop-server', async () => {
+            try {
+                await this.sessionSharingServer.stop()
+                // Broadcast status change
+                this.broadcast('session-sharing:server-status-changed', {
+                    isRunning: false,
+                    port: 0,
+                    host: '0.0.0.0',
+                    url: null,
+                    publicUrl: null,
+                })
+                return { success: true }
+            } catch (error: any) {
+                console.error('Failed to stop session sharing server:', error)
+                return { success: false, error: error.message }
+            }
+        })
+
+        // IPC handler: Set public URL (for tunneling services)
+        ipcMain.handle('session-sharing:set-public-url', async (_event, url: string | null) => {
+            this.sessionSharingServer.setPublicUrl(url)
+            // Broadcast status change
+            this.broadcast('session-sharing:server-status-changed', {
+                isRunning: this.sessionSharingServer.isStarted(),
+                port: this.sessionSharingServer.getPort(),
+                host: this.sessionSharingServer.getHost(),
+                url: this.sessionSharingServer.getWebSocketUrl(false),
+                publicUrl: this.sessionSharingServer.getPublicUrl(),
+            })
+        })
+
+        // IPC handler: Get network URL template
+        ipcMain.handle('session-sharing:get-network-url', async () => {
+            return this.sessionSharingServer.getNetworkUrl()
+        })
+
+        // IPC handler: Get public URL if available
+        ipcMain.handle('session-sharing:get-public-url', async () => {
+            return this.sessionSharingServer.getPublicUrl()
+        })
+
+        // Listen for viewer join/leave events from server
+        process.on('session-sharing:viewer-joined' as any, (sessionId: string, count: number) => {
+            this.broadcast('session-sharing:viewer-count-changed', sessionId, count)
+        })
+
+        process.on('session-sharing:viewer-left' as any, (sessionId: string, count: number) => {
+            this.broadcast('session-sharing:viewer-count-changed', sessionId, count)
+        })
+
+        // Listen for input events from server (will need to route to terminal)
+        process.on('session-sharing:input' as any, (sessionId: string, data: Buffer) => {
+            this.broadcast('session-sharing:terminal-input', sessionId, data)
+        })
+
+    }
+
+    /**
+     * Start tunneling service for internet access (optional)
+     * This can be integrated with services like ngrok, localtunnel, or Cloudflare Tunnel
+     */
+    private async startTunnelingService (): Promise<void> {
+        // TODO: Implement tunneling service integration
+        // Options:
+        // 1. ngrok - requires ngrok binary or API key
+        // 2. localtunnel - npm package, simple to use
+        // 3. Cloudflare Tunnel - free, requires cloudflare account
+        // 4. Custom tunnel service
+        
+        console.log('Tunneling service requested but not yet implemented')
+        console.log('For internet access, consider:')
+        console.log('  1. Using port forwarding on your router')
+        console.log('  2. Using a tunneling service (ngrok, localtunnel, etc.)')
+        console.log('  3. Using a VPN to connect to your local network')
+        
+        // For now, users can manually set up port forwarding or use external tunneling tools
+    }
+
+    async init (): Promise<void> {
+        // Don't auto-start the server - let user control it via the dock button
+        // Server will start when:
+        // 1. User clicks the dock button to start it
+        // 2. User tries to share a session and agrees to start it
+        
+        // Check if auto-start is enabled in config (for backward compatibility)
+        const sessionSharingConfig = this.configStore.sessionSharing || {}
+        if (sessionSharingConfig.autoStart) {
+            try {
+                const bindHost = sessionSharingConfig.bindHost || '0.0.0.0'
+                const port = sessionSharingConfig.port || 0
+                await this.sessionSharingServer.start(port, bindHost)
+                
+                // If tunneling is enabled, start tunnel service (for internet access)
+                if (sessionSharingConfig.enableTunneling) {
+                    await this.startTunnelingService()
+                }
+            } catch (error) {
+                console.warn('Failed to auto-start session sharing server:', error)
+            }
+        }
+
         screen.on('display-metrics-changed', () => this.broadcast('host:display-metrics-changed'))
         screen.on('display-added', () => this.broadcast('host:displays-changed'))
         screen.on('display-removed', () => this.broadcast('host:displays-changed'))

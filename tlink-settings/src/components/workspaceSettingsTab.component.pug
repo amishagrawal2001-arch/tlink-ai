@@ -1,0 +1,55 @@
+.content-box
+    .container-fluid
+        h3 {{ 'Workspaces' | translate }}
+        p.text-muted {{ 'Save and restore your terminal sessions, code editor folders, and layouts' | translate }}
+
+        .mb-3
+            button.btn.btn-primary.mr-2((click)='saveCurrentWorkspace()')
+                i.fas.fa-save.mr-2
+                | {{ 'Save Current Workspace' | translate }}
+            button.btn.btn-outline-primary.mr-2((click)='importWorkspaceFromUrl()')
+                i.fas.fa-download.mr-2
+                | {{ 'Import from URL' | translate }}
+
+        h4 {{ 'Saved Workspaces' | translate }}
+        .list-group.mb-3
+            .list-group-item(
+                *ngFor='let workspace of workspaces',
+                [class.active]='selectedWorkspace?.id === workspace.id',
+                (click)='selectedWorkspace = workspace'
+            )
+                .d-flex.w-100.justify-content-between
+                    div
+                        h5.mb-1 {{ workspace.name }}
+                        p.mb-1.text-muted.small(*ngIf='workspace.description') {{ workspace.description }}
+                        p.mb-0.small
+                            | {{ 'Tabs' | translate }}: {{ workspace.tabs.length }}
+                            span.ml-2(*ngIf='workspace.codeEditorFolders.length > 0')
+                                | {{ 'Folders' | translate }}: {{ workspace.codeEditorFolders.length }}
+                    .btn-group.btn-group-sm
+                        button.btn.btn-outline-primary(
+                            (click)='loadWorkspace(workspace); $event.stopPropagation()',
+                            [ngbTooltip]='"Load workspace" | translate'
+                        )
+                            i.fas.fa-play
+                        button.btn.btn-outline-info(
+                            (click)='shareWorkspace(workspace); $event.stopPropagation()',
+                            [ngbTooltip]='"Share workspace (copy URL)" | translate'
+                        )
+                            i.fas.fa-share-alt
+                        button.btn.btn-outline-secondary(
+                            (click)='exportWorkspace(workspace); $event.stopPropagation()',
+                            [ngbTooltip]='"Export workspace (copy JSON)" | translate'
+                        )
+                            i.fas.fa-file-export
+                        button.btn.btn-outline-danger(
+                            (click)='deleteWorkspace(workspace); $event.stopPropagation()',
+                            [ngbTooltip]='"Delete workspace" | translate'
+                        )
+                            i.fas.fa-trash
+                .small.text-muted.mt-1
+                    | {{ 'Updated' | translate }}: {{ formatDate(workspace.updatedAt) }}
+
+        .alert.alert-info(*ngIf='workspaces.length === 0')
+            | {{ 'No workspaces saved yet. Save your current workspace to get started.' | translate }}
+

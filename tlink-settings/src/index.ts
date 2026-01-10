@@ -17,6 +17,7 @@ import { WindowSettingsTabComponent } from './components/windowSettingsTab.compo
 import { VaultSettingsTabComponent }  from './components/vaultSettingsTab.component'
 import { SetVaultPassphraseModalComponent } from './components/setVaultPassphraseModal.component'
 import { ProfilesSettingsTabComponent } from './components/profilesSettingsTab.component'
+import { WorkspaceSettingsTabComponent } from './components/workspaceSettingsTab.component'
 import { ReleaseNotesComponent } from './components/releaseNotesTab.component'
 import { ConfigSyncSettingsTabComponent } from './components/configSyncSettingsTab.component'
 import { ShowSecretModalComponent } from './components/showSecretModal.component'
@@ -27,7 +28,7 @@ import { SettingsTabProvider } from './api'
 import { ButtonProvider } from './buttonProvider'
 import { SettingsHotkeyProvider } from './hotkeys'
 import { SettingsConfigProvider } from './config'
-import { HotkeySettingsTabProvider, WindowSettingsTabProvider, VaultSettingsTabProvider, ProfilesSettingsTabProvider, ConfigSyncSettingsTabProvider } from './settings'
+import { HotkeySettingsTabProvider, WindowSettingsTabProvider, VaultSettingsTabProvider, ProfilesSettingsTabProvider, WorkspaceSettingsTabProvider, ConfigSyncSettingsTabProvider } from './settings'
 
 /** @hidden */
 @NgModule({
@@ -46,6 +47,7 @@ import { HotkeySettingsTabProvider, WindowSettingsTabProvider, VaultSettingsTabP
         { provide: SettingsTabProvider, useClass: WindowSettingsTabProvider, multi: true },
         { provide: SettingsTabProvider, useClass: VaultSettingsTabProvider, multi: true },
         { provide: SettingsTabProvider, useClass: ProfilesSettingsTabProvider, multi: true },
+        { provide: SettingsTabProvider, useClass: WorkspaceSettingsTabProvider, multi: true },
         { provide: SettingsTabProvider, useClass: ConfigSyncSettingsTabProvider, multi: true },
     ],
     declarations: [
@@ -55,6 +57,7 @@ import { HotkeySettingsTabProvider, WindowSettingsTabProvider, VaultSettingsTabP
         HotkeySettingsTabComponent,
         MultiHotkeyInputComponent,
         ProfilesSettingsTabComponent,
+        WorkspaceSettingsTabComponent,
         SettingsTabComponent,
         SettingsTabBodyComponent,
         SetVaultPassphraseModalComponent,

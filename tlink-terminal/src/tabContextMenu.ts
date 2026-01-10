@@ -1,6 +1,6 @@
 import { Injectable, Optional, Inject } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
-import { BaseTabComponent as CoreBaseTabComponent, TabContextMenuItemProvider as CoreTabContextMenuItemProvider, NotificationsService, MenuItemOptions, TranslateService, SplitTabComponent, PromptModalComponent, ConfigService, PartialProfile, Profile, HostAppService, Platform, PlatformService } from 'tlink-core'
+import { BaseTabComponent as CoreBaseTabComponent, TabContextMenuItemProvider as CoreTabContextMenuItemProvider, NotificationsService, MenuItemOptions, TranslateService, SplitTabComponent, PromptModalComponent, ConfigService, PartialProfile, Profile, HostAppService, Platform, PlatformService, SessionSharingService, ShareSessionModalComponent, LogService, Logger, SelectorService, SelectorOption } from 'tlink-core'
 import { BaseTerminalTabComponent } from './api/baseTerminalTab.component'
 import { TerminalContextMenuItemProvider } from './api/contextMenuProvider'
 import { MultifocusService } from './services/multifocus.service'
@@ -156,6 +156,144 @@ export class LegacyContextMenu extends TabContextMenuItemProviderRuntime {
         return []
     }
 
+}
+
+/** @hidden */
+@Injectable()
+export class SessionSharingContextMenu extends TabContextMenuItemProviderRuntime {
+    weight = 0
+    private logger: Logger
+
+    constructor (
+        private sessionSharing: SessionSharingService,
+        private ngbModal: NgbModal,
+        private notifications: NotificationsService,
+        private translate: TranslateService,
+        private selector: SelectorService,
+        log: LogService,
+    ) {
+        super()
+        this.logger = log.create('sessionSharingContextMenu')
+    }
+
+    async getItems (tab: CoreBaseTabComponent): Promise<MenuItemOptions[]> {
+        if (tab instanceof BaseTerminalTabComponent) {
+            const isShared = this.sessionSharing.isSessionShared(tab)
+            const sharedSession = this.sessionSharing.getSharedSession(tab)
+
+            const items: MenuItemOptions[] = []
+
+            if (isShared && sharedSession) {
+                items.push({
+                    label: this.translate.instant('Copy share link'),
+                    click: async () => {
+                        const success = await this.sessionSharing.copyShareableLink(tab)
+                        if (success) {
+                            this.notifications.notice(this.translate.instant('Share link copied to clipboard'))
+                        } else {
+                            this.notifications.error(this.translate.instant('Failed to copy share link'))
+                        }
+                    },
+                })
+                items.push({
+                    label: this.translate.instant('View sharing details'),
+                    click: async () => {
+                        const shareUrl = await this.sessionSharing.shareSession(tab, { mode: sharedSession.mode })
+                        if (shareUrl) {
+                            const modal = this.ngbModal.open(ShareSessionModalComponent, {
+                                backdrop: 'static',
+                            })
+                            modal.componentInstance.shareUrl = shareUrl
+                            modal.componentInstance.mode = sharedSession.mode
+                            modal.componentInstance.viewers = sharedSession.viewers
+                            if (sharedSession.expiresAt) {
+                                const expiresIn = Math.round((sharedSession.expiresAt.getTime() - Date.now()) / 60000)
+                                if (expiresIn > 0) {
+                                    modal.componentInstance.expiresIn = expiresIn
+                                }
+                            }
+                        }
+                    },
+                })
+                items.push({
+                    label: this.translate.instant('Stop sharing'),
+                    click: async () => {
+                        await this.sessionSharing.stopSharing(tab)
+                        this.notifications.notice(this.translate.instant('Session sharing stopped'))
+                    },
+                })
+            } else {
+                items.push({
+                    label: this.translate.instant('Share session'),
+                    click: async () => {
+                        try {
+                            // Show mode selector
+                            if (this.selector.active) {
+                                return
+                            }
+
+                            const modeOptions: SelectorOption<'read-only' | 'interactive'>[] = [
+                                {
+                                    name: this.translate.instant('Read-only'),
+                                    description: this.translate.instant('Viewers can only see the terminal output'),
+                                    icon: 'fas fa-eye',
+                                    result: 'read-only' as 'read-only',
+                                },
+                                {
+                                    name: this.translate.instant('Interactive'),
+                                    description: this.translate.instant('Viewers can also send input to the terminal'),
+                                    icon: 'fas fa-keyboard',
+                                    result: 'interactive' as 'interactive',
+                                },
+                            ]
+
+                            const selectedMode = await this.selector.show<'read-only' | 'interactive'>(
+                                this.translate.instant('Select sharing mode'),
+                                modeOptions,
+                            ).catch(() => {
+                                // User cancelled
+                                return null
+                            })
+
+                            if (selectedMode) {
+                                await this.shareWithMode(tab, selectedMode)
+                            }
+                        } catch (error) {
+                            this.logger.error('Failed to share session:', error)
+                            this.notifications.error(this.translate.instant('Failed to share session: {error}', { error: error.message || error }))
+                        }
+                    },
+                })
+            }
+
+            return items
+        }
+        return []
+    }
+
+    private async shareWithMode (tab: BaseTerminalTabComponent<any>, mode: 'read-only' | 'interactive'): Promise<void> {
+        try {
+            const shareUrl = await this.sessionSharing.shareSession(tab, { mode })
+            if (shareUrl) {
+                // Copy URL to clipboard
+                await this.sessionSharing.copyShareableLink(tab)
+                
+                const modal = this.ngbModal.open(ShareSessionModalComponent, {
+                    backdrop: 'static',
+                })
+                modal.componentInstance.shareUrl = shareUrl
+                modal.componentInstance.mode = mode
+                modal.componentInstance.viewers = 0
+                
+                this.notifications.notice(this.translate.instant('Session shared! Share URL copied to clipboard.'))
+            } else {
+                this.notifications.error(this.translate.instant('Failed to share session. Please check console for details.'))
+            }
+        } catch (error) {
+            this.logger.error('Failed to share session:', error)
+            this.notifications.error(this.translate.instant('Failed to share session: {error}', { error: error.message || error }))
+        }
+    }
 }
 
 /** @hidden */

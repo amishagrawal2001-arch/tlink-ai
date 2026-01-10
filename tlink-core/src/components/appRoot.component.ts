@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { Component, Input, HostListener, HostBinding, ViewChildren, ViewChild, Type } from '@angular/core'
+import { Component, Input, HostListener, HostBinding, ViewChildren, ViewChild, Type, OnInit } from '@angular/core'
 import { trigger, style, animate, transition, state } from '@angular/animations'
 import { NgbDropdown, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop'
@@ -68,7 +68,7 @@ function makeTabAnimation (dimension: string, size: number) {
         trigger('animateTab', makeTabAnimation('width', 200)),
     ],
 })
-export class AppRootComponent {
+export class AppRootComponent implements OnInit {
     Platform = Platform
     @Input() ready = false
     @Input() leftToolbarButtons: Command[]
@@ -446,6 +446,20 @@ export class AppRootComponent {
             this.ready = true
             this.app.emitReady()
         })
+
+        // Check initial WebSocket server status
+        await this.checkWebSocketServerStatus()
+
+        // Listen for server status changes from main process
+        if (this.isElectron()) {
+            const ipcRenderer = this.getIpcRenderer()
+            if (ipcRenderer) {
+                ipcRenderer.on('session-sharing:server-status-changed', (_event: any, status: any) => {
+                    this.websocketServerRunning = status.isRunning
+                    this.websocketServerPort = status.port || 0
+                })
+            }
+        }
     }
 
     @HostListener('dragover')
@@ -586,6 +600,102 @@ export class AppRootComponent {
             context.tab = tab
         }
         await this.commands.run('tlink-chatgpt:open', context)
+    }
+
+    websocketServerRunning = false
+    websocketServerStarting = false
+    websocketServerPort = 0
+
+    private isElectron (): boolean {
+        return typeof window !== 'undefined' && (window as any).require && typeof process !== 'undefined' && (process as any).type === 'renderer'
+    }
+
+    private getIpcRenderer (): any {
+        try {
+            if (this.isElectron()) {
+                const electron = (window as any).require('electron')
+                if (electron && electron.ipcRenderer) {
+                    return electron.ipcRenderer
+                }
+            }
+        } catch {
+            // Not in Electron
+        }
+        return null
+    }
+
+    async checkWebSocketServerStatus (): Promise<void> {
+        const ipcRenderer = this.getIpcRenderer()
+        if (!ipcRenderer) {
+            return
+        }
+
+        try {
+            const status = await ipcRenderer.invoke('session-sharing:get-server-status')
+            this.websocketServerRunning = status.isRunning
+            this.websocketServerPort = status.port || 0
+        } catch (error) {
+            this.logger.debug('Could not check WebSocket server status:', error)
+        }
+    }
+
+    async toggleWebSocketServer (): Promise<void> {
+        if (this.websocketServerStarting) {
+            return
+        }
+
+        const ipcRenderer = this.getIpcRenderer()
+        if (!ipcRenderer) {
+            return
+        }
+
+        this.websocketServerStarting = true
+
+        try {
+            if (this.websocketServerRunning) {
+                // Stop server
+                const result = await ipcRenderer.invoke('session-sharing:stop-server')
+                if (result.success) {
+                    this.logger.info('WebSocket server stopped')
+                } else {
+                    this.logger.error('Failed to stop WebSocket server:', result.error)
+                    await this.platform.showMessageBox({
+                        type: 'error',
+                        message: 'Failed to stop WebSocket server',
+                        detail: result.error,
+                        buttons: ['OK'],
+                    })
+                }
+            } else {
+                // Start server
+                const result = await ipcRenderer.invoke('session-sharing:start-server')
+                if (result.success) {
+                    this.logger.info(`WebSocket server started on port ${result.port}`)
+                    this.websocketServerPort = result.port
+                } else {
+                    this.logger.error('Failed to start WebSocket server:', result.error)
+                    await this.platform.showMessageBox({
+                        type: 'error',
+                        message: 'Failed to start WebSocket server',
+                        detail: result.error,
+                        buttons: ['OK'],
+                    })
+                }
+            }
+            
+            // Refresh status
+            await this.checkWebSocketServerStatus()
+        } catch (error) {
+            this.logger.error('Error toggling WebSocket server:', error)
+            await this.platform.showMessageBox({
+                type: 'error',
+                message: 'Error controlling WebSocket server',
+                detail: String(error),
+                buttons: ['OK'],
+            })
+        } finally {
+            this.websocketServerStarting = false
+        }
     }
 
     openCodeEditor (): void {

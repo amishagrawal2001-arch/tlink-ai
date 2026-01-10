@@ -5,6 +5,7 @@ import { WindowSettingsTabComponent } from './components/windowSettingsTab.compo
 import { VaultSettingsTabComponent } from './components/vaultSettingsTab.component'
 import { ConfigSyncSettingsTabComponent } from './components/configSyncSettingsTab.component'
 import { ProfilesSettingsTabComponent } from './components/profilesSettingsTab.component'
+import { WorkspaceSettingsTabComponent } from './components/workspaceSettingsTab.component'
 import { TranslateService } from 'tlink-core'
 
 /** @hidden */
@@ -62,6 +63,20 @@ export class ProfilesSettingsTabProvider extends SettingsTabProvider {
 
     getComponentType (): any {
         return ProfilesSettingsTabComponent
+    }
+}
+
+/** @hidden */
+@Injectable()
+export class WorkspaceSettingsTabProvider extends SettingsTabProvider {
+    id = 'workspaces'
+    icon = 'folder-open'
+    title = this.translate.instant('Workspaces')
+
+    constructor (private translate: TranslateService) { super() }
+
+    getComponentType (): any {
+        return WorkspaceSettingsTabComponent
     }
 }
 

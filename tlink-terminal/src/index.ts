@@ -34,9 +34,10 @@ import { TerminalSettingsTabProvider, AppearanceSettingsTabProvider, ColorScheme
 import { DebugDecorator } from './features/debug'
 import { ZModemDecorator } from './features/zmodem'
 import { SessionLoggerDecorator } from './features/sessionLogger'
+import { SessionSharingDecorator } from './features/sessionSharing'
 import { TerminalConfigProvider } from './config'
 import { TerminalHotkeyProvider } from './hotkeys'
-import { CopyPasteContextMenu, MiscContextMenu, LegacyContextMenu, ReconnectContextMenu, SaveAsProfileContextMenu } from './tabContextMenu'
+import { CopyPasteContextMenu, MiscContextMenu, LegacyContextMenu, ReconnectContextMenu, SaveAsProfileContextMenu, SessionSharingContextMenu } from './tabContextMenu'
 
 import { Frontend } from './frontends/frontend'
 import { XTermFrontend, XTermWebGLFrontend } from './frontends/xtermFrontend'
@@ -67,12 +68,14 @@ import { SessionManagerCommandProvider } from './sessionManagerProvider'
         { provide: TerminalDecorator, useClass: ZModemDecorator, multi: true },
         { provide: TerminalDecorator, useClass: DebugDecorator, multi: true },
         { provide: TerminalDecorator, useClass: SessionLoggerDecorator, multi: true },
+        { provide: TerminalDecorator, useClass: SessionSharingDecorator, multi: true },
 
         { provide: TabContextMenuItemProvider, useClass: CopyPasteContextMenu, multi: true },
         { provide: TabContextMenuItemProvider, useClass: MiscContextMenu, multi: true },
         { provide: TabContextMenuItemProvider, useClass: LegacyContextMenu, multi: true },
         { provide: TabContextMenuItemProvider, useClass: ReconnectContextMenu, multi: true },
         { provide: TabContextMenuItemProvider, useClass: SaveAsProfileContextMenu, multi: true },
+        { provide: TabContextMenuItemProvider, useClass: SessionSharingContextMenu, multi: true },
 
         { provide: CLIHandler, useClass: TerminalCLIHandler, multi: true },
         { provide: TerminalColorSchemeProvider, useClass: DefaultColorSchemes, multi: true },

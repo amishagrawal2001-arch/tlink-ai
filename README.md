@@ -28,7 +28,9 @@ Tlink AI is a fork of [Tlink](https://tlink.sh) with enhanced AI capabilities, i
 
 * **AI-Powered Terminal Assistant** - Context-aware command suggestions and automated troubleshooting
 * **Integrated Code Editor** - Monaco-based editor with directory explorer, file management, and run-in-terminal capabilities
-* **Enhanced Collaboration** - Workspace management and team features (coming soon)
+* **Real-Time Session Sharing** - Share terminal sessions with team members via WebSocket (read-only or interactive modes)
+* **Workspace Management** - Save and restore workspaces, share via URL, team collaboration features
+* **Enhanced Collaboration** - Real-time terminal sharing, workspace templates, and team workspaces
 * **All Original Tlink Features** - SSH, serial terminal, theming, split panes, and more
 
 <br/>
@@ -42,6 +44,8 @@ This README is also available in: <a  href="./README.es-ES.md">:es: Spanish</a> 
 
 * Integrated SSH and Telnet client and connection manager
 * Integrated serial terminal
+* **Real-time terminal session sharing** with embedded WebSocket server
+* **Workspace management** - Save, load, and share workspace configurations
 * Theming and color schemes
 * Fully configurable shortcuts and multi-chord shortcuts
 * Split panes
@@ -63,6 +67,8 @@ This README is also available in: <a  href="./README.es-ES.md">:es: Spanish</a> 
 - [SSH Client](#ssh-client)
 - [Serial Terminal](#serial-terminal)
 - [Code Editor](#code-editor)
+- [Session Sharing](#session-sharing)
+- [Workspace Management](#workspace-management)
 - [AI Integration](#ai-integration)
 - [Portable](#portable)
 - [Plugins](#plugins)
@@ -116,6 +122,107 @@ This README is also available in: <a  href="./README.es-ES.md">:es: Spanish</a> 
 * Optional hex byte-by-byte input and hexdump output
 * Newline conversion
 * Automatic reconnection
+
+<a name="session-sharing"></a>
+
+# Session Sharing
+
+Real-time terminal session sharing capabilities for team collaboration and remote assistance.
+
+## Features
+
+* **Embedded WebSocket Server** - Built-in server for local network and internet sharing
+* **Dual Sharing Modes**:
+  - **Read-only mode** - Viewers can observe terminal output in real-time
+  - **Interactive mode** - Viewers can send input (useful for pair programming and support)
+* **Easy Access Control** - Password protection and expiration options
+* **Network Access**:
+  - **Local Network** - Automatically accessible on your LAN/Wi-Fi network
+  - **Internet Access** - Configure port forwarding or use tunneling services (ngrok, localtunnel)
+* **One-Click Control** - Start/stop server via dock button (left sidebar)
+* **Smart Prompts** - Automatic prompts to start server when sharing sessions
+
+## Quick Start
+
+1. **Start the WebSocket Server**:
+   - Click the plug/power icon in the left dock (below AI Chat button)
+   - Server auto-assigns an available port
+   - Status indicator shows server state (plug icon = stopped, power icon = running)
+
+2. **Share a Terminal Session**:
+   - Right-click any terminal tab
+   - Select "Share session"
+   - Choose mode: "Read-only" or "Interactive"
+   - Optional: Set password and expiration time
+   - Copy the shareable URL and send to collaborators
+
+3. **Access Shared Sessions**:
+   - **Local Network**: `ws://<your-ip>:<port>/session?sessionId=...&token=...`
+   - **Internet**: Configure port forwarding or use tunneling service
+   - Viewers connect via WebSocket URL to see real-time terminal output
+
+## Configuration
+
+Edit `~/.config/tlink/config.yaml`:
+
+```yaml
+sessionSharing:
+  autoStart: false        # Auto-start server on app launch (default: false)
+  bindHost: "0.0.0.0"     # Bind to all interfaces (0.0.0.0) or localhost (127.0.0.1)
+  port: 0                 # Auto-assign port (0) or specific port number
+  enableTunneling: false  # Enable tunneling service integration (future)
+```
+
+## Network Access Guide
+
+See [SESSION_SHARING_NETWORK_ACCESS.md](./SESSION_SHARING_NETWORK_ACCESS.md) for detailed guides on:
+- Local network sharing (works out of the box)
+- Internet access via port forwarding
+- Using tunneling services (ngrok, localtunnel, Cloudflare Tunnel)
+- Security best practices
+- Troubleshooting network connectivity
+
+## Use Cases
+
+* **Team Collaboration** - Share terminal sessions for pair programming and debugging
+* **Remote Support** - Help team members troubleshoot issues in real-time
+* **Training & Demos** - Conduct live terminal demonstrations
+* **Code Reviews** - Review command-line workflows interactively
+* **Documentation** - Record and share terminal sessions for tutorials
+
+<a name="workspace"></a>
+
+# Workspace Management
+
+Manage and share your Tlink environment configurations with workspace features.
+
+## Features
+
+* **Save Current Workspace** - Capture current tabs, code editor folders, profiles, and layout
+* **Workspace Sharing**:
+  - **Export as JSON** - Copy workspace configuration to clipboard
+  - **Import from URL** - Load workspace from shared URL
+  - **Shareable Links** - Generate URLs for easy workspace distribution
+* **Team Workspaces** - Shared team configurations (coming soon)
+
+## Usage
+
+1. **Save Workspace**:
+   - Go to Settings → Workspaces
+   - Click "Save Current Workspace"
+   - Name your workspace
+   - Workspace captures all open tabs, code editor state, and layout
+
+2. **Share Workspace**:
+   - Select a workspace from the list
+   - Click "Share" to generate a shareable URL
+   - Or click "Export" to copy JSON configuration
+   - Share URL/JSON with team members
+
+3. **Load Workspace**:
+   - Click "Load" on any saved workspace
+   - Or use "Import from URL" to load from shared link
+   - All tabs and configuration restore automatically
 
 <a name="portable"></a>
 
@@ -181,7 +288,8 @@ See [HACKING.md](./HACKING.md) and [API docs](https://docs.tlink.sh/) for inform
 
 Tlink AI includes a comprehensive roadmap for business-focused enhancements. See [BUSINESS_ENHANCEMENTS.md](./BUSINESS_ENHANCEMENTS.md) for detailed plans including:
 
-- Workspace management and team collaboration
+- ✅ **Real-time session sharing** - Implemented! Share terminal sessions with team members via WebSocket
+- ✅ **Workspace management** - Implemented! Save, load, and share workspace configurations
 - Cloud sync and backup
 - Enhanced AI integration
 - Enterprise security features

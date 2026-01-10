@@ -98,15 +98,26 @@ $tab-border-radius: 4px;
     cursor: pointer;
     transition: 0.15s ease-out;
 
-    &:hover {
+    &:hover:not(.disabled) {
         background: var(--theme-bg-more);
         border-color: var(--theme-bg-less);
         color: var(--theme-fg-more-2);
     }
 
-    &:disabled {
+    &:disabled,
+    &.disabled {
         opacity: 0.5;
         cursor: default;
+    }
+
+    &.active {
+        background: var(--theme-bg-more);
+        border-color: var(--theme-bg-less);
+        color: var(--theme-accent, var(--theme-fg-more-2));
+        
+        &:hover {
+            background: var(--theme-bg-more-2);
+        }
     }
 
     svg {
@@ -114,6 +125,11 @@ $tab-border-radius: 4px;
         height: 14px;
         display: block;
         fill: currentColor;
+    }
+
+    i.fas {
+        font-size: 13px;
+        line-height: 1;
     }
 }
 
