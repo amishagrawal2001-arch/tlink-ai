@@ -283,6 +283,7 @@ export { ColorPickerModalComponent } from './components/colorPickerModal.compone
 export { ShareSessionModalComponent } from './components/shareSessionModal.component'
 export { WorkspaceService } from './services/workspace.service'
 export { SessionSharingService } from './services/sessionSharing.service'
+export { BackupService, Backup, BackupConfig } from './services/backup.service'
 export * from './api/workspace'
 
 // Deprecations

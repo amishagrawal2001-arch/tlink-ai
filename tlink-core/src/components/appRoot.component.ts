@@ -13,6 +13,7 @@ import { ConfigService } from '../services/config.service'
 import { ThemesService } from '../services/themes.service'
 import { UpdaterService } from '../services/updater.service'
 import { CommandService } from '../services/commands.service'
+import { BackupService } from '../services/backup.service'
 
 import { BaseTabComponent } from './baseTab.component'
 import { SafeModeModalComponent } from './safeModeModal.component'
@@ -116,6 +117,7 @@ export class AppRootComponent implements OnInit {
         log: LogService,
         private ngbModal: NgbModal,
         _themes: ThemesService,
+        _backup: BackupService,
     ) {
         // document.querySelector('app-root')?.remove()
         this.logger = log.create('main')
@@ -460,6 +462,9 @@ export class AppRootComponent implements OnInit {
                 })
             }
         }
+
+        // Backup service will auto-initialize when config is ready
+        // No need to manually start it here as it's handled in the constructor
     }
 
     @HostListener('dragover')

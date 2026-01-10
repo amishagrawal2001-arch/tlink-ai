@@ -77,8 +77,50 @@ const builtinModules = [
     'tlink-terminal',
 ]
 
+// Compatibility mapping for legacy "Tabby" module names
+const compatibilityMappings: Record<string, string> = {
+    'tabby-core': 'tlink-core',
+    'tabby-settings': 'tlink-settings',
+    'tabby-terminal': 'tlink-terminal',
+    'tabby-local': 'tlink-local',
+}
+
+// Helper function to resolve module name with compatibility aliases
+function resolveModuleName (query: string): string {
+    // Check if it's a legacy Tabby module name and map it to Tlink
+    if (compatibilityMappings[query]) {
+        const mappedName = compatibilityMappings[query]
+        // If the mapped module is loaded, use it and set the alias for future lookups
+        if (cachedBuiltinModules[mappedName]) {
+            // Set the alias immediately if not already set
+            if (!cachedBuiltinModules[query]) {
+                cachedBuiltinModules[query] = cachedBuiltinModules[mappedName]
+            }
+            return mappedName
+        } else {
+            // If the mapped module isn't loaded yet, try to load it now
+            try {
+                const mappedModule = nodeRequire(mappedName)
+                cachedBuiltinModules[mappedName] = mappedModule
+                cachedBuiltinModules[query] = mappedModule
+                return mappedName
+            } catch (error) {
+                console.warn(`Failed to load compatibility module ${mappedName} for ${query}:`, error)
+            }
+        }
+    }
+    return query
+}
+
 const originalRequire = (global as any).require
 ;(global as any).require = function (query: string) {
+    // Try direct lookup first (includes aliases set by resolveModuleName)
+    if (cachedBuiltinModules[query]) {
+        return cachedBuiltinModules[query]
+    }
+    // Try compatibility mapping - this will set the alias if found
+    resolveModuleName(query)
+    // Check again after resolution (resolveModuleName sets cachedBuiltinModules[query] if it finds a match)
     if (cachedBuiltinModules[query]) {
         return cachedBuiltinModules[query]
     }
@@ -87,6 +129,13 @@ const originalRequire = (global as any).require
 
 const originalModuleRequire = nodeModule.prototype.require
 nodeModule.prototype.require = function (query: string) {
+    // Try direct lookup first (includes aliases set by resolveModuleName)
+    if (cachedBuiltinModules[query]) {
+        return cachedBuiltinModules[query]
+    }
+    // Try compatibility mapping - this will set the alias if found
+    resolveModuleName(query)
+    // Check again after resolution (resolveModuleName sets cachedBuiltinModules[query] if it finds a match)
     if (cachedBuiltinModules[query]) {
         return cachedBuiltinModules[query]
     }
@@ -117,9 +166,23 @@ export function initModuleLookup (userPluginsPath: string): void {
 
     builtinModules.forEach(m => {
         if (!cachedBuiltinModules[m]) {
-            cachedBuiltinModules[m] = nodeRequire(m)
+            try {
+                cachedBuiltinModules[m] = nodeRequire(m)
+            } catch (error) {
+                console.warn(`Failed to load builtin module ${m}:`, error)
+            }
         }
     })
+
+    // Add compatibility aliases for legacy "Tabby" module names
+    // This allows plugins written for Tabby (e.g., tabby-copilot) to work with Tlink
+    // Add these as direct aliases in cachedBuiltinModules for faster lookup
+    for (const [legacyName, newName] of Object.entries(compatibilityMappings)) {
+        if (cachedBuiltinModules[newName] && !cachedBuiltinModules[legacyName]) {
+            cachedBuiltinModules[legacyName] = cachedBuiltinModules[newName]
+            console.log(`Added compatibility alias: ${legacyName} -> ${newName}`)
+        }
+    }
 }
 
 const PRIMARY_PLUGIN_PREFIX = 'tlink-'

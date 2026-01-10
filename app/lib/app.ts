@@ -7,6 +7,7 @@ import * as fs from 'fs'
 import { Subject, throttleTime } from 'rxjs'
 
 import { saveConfig } from './config'
+import { writeFile } from 'atomically'
 import { Window, WindowOptions } from './window'
 import { pluginManager } from './pluginManager'
 import { PTYManager } from './pty'
@@ -94,6 +95,8 @@ export class Application {
         for (const flag of this.configStore.flags || [['force_discrete_gpu', '0']]) {
             app.commandLine.appendSwitch(flag[0], flag[1])
         }
+
+        this.initBackup()
 
         app.on('before-quit', () => {
             this.sessionSharingServer.stop()
@@ -259,6 +262,132 @@ export class Application {
         console.log('  3. Using a VPN to connect to your local network')
         
         // For now, users can manually set up port forwarding or use external tunneling tools
+    }
+
+    /**
+     * Initialize backup IPC handlers
+     */
+    private initBackup (): void {
+        // IPC handler: Get backup directory path
+        ipcMain.handle('backup:get-directory-path', async () => {
+            try {
+                const configDir = process.env.TLINK_CONFIG_DIRECTORY || app.getPath('userData')
+                return path.join(configDir, 'backups')
+            } catch (error) {
+                console.error('Failed to get backup directory path:', error)
+                return path.join(app.getPath('userData'), 'backups')
+            }
+        })
+
+        // IPC handler: Ensure backup directory exists
+        ipcMain.handle('backup:ensure-directory', async (_event, dir: string) => {
+            try {
+                if (!fs.existsSync(dir)) {
+                    fs.mkdirSync(dir, { recursive: true })
+                    console.log(`Backup directory created: ${dir}`)
+                }
+                return true
+            } catch (error) {
+                console.error('Failed to create backup directory:', error)
+                return false
+            }
+        })
+
+        // IPC handler: Save backup file
+        ipcMain.handle('backup:save-file', async (_event, filePath: string, content: string) => {
+            try {
+                const dir = path.dirname(filePath)
+                if (!fs.existsSync(dir)) {
+                    fs.mkdirSync(dir, { recursive: true })
+                }
+                await writeFile(filePath, content, { encoding: 'utf8' })
+                return true
+            } catch (error) {
+                console.error('Failed to save backup file:', error)
+                throw error
+            }
+        })
+
+        // IPC handler: Load backup file
+        ipcMain.handle('backup:load-file', async (_event, filePath: string) => {
+            try {
+                if (!fs.existsSync(filePath)) {
+                    throw new Error('Backup file not found')
+                }
+                return fs.readFileSync(filePath, 'utf8')
+            } catch (error) {
+                console.error('Failed to load backup file:', error)
+                throw error
+            }
+        })
+
+        // IPC handler: Delete backup file
+        ipcMain.handle('backup:delete-file', async (_event, filePath: string) => {
+            try {
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath)
+                }
+                return true
+            } catch (error) {
+                console.error('Failed to delete backup file:', error)
+                throw error
+            }
+        })
+
+        // IPC handler: Load backup index
+        ipcMain.handle('backup:load-index', async (_event, backupDir: string) => {
+            try {
+                const indexPath = path.join(backupDir, 'index.json')
+                if (fs.existsSync(indexPath)) {
+                    const content = fs.readFileSync(indexPath, 'utf8')
+                    return JSON.parse(content)
+                }
+                return []
+            } catch (error) {
+                console.error('Failed to load backup index:', error)
+                return []
+            }
+        })
+
+        // IPC handler: Save backup index
+        ipcMain.handle('backup:save-index', async (_event, backupDir: string, backups: any[]) => {
+            try {
+                const indexPath = path.join(backupDir, 'index.json')
+                const dir = path.dirname(indexPath)
+                if (!fs.existsSync(dir)) {
+                    fs.mkdirSync(dir, { recursive: true })
+                }
+                await writeFile(indexPath, JSON.stringify(backups, null, 2), { encoding: 'utf8' })
+                return true
+            } catch (error) {
+                console.error('Failed to save backup index:', error)
+                throw error
+            }
+        })
+
+        // IPC handler: Show save dialog
+        ipcMain.handle('backup:show-save-dialog', async (_event, options: any) => {
+            try {
+                const { dialog } = require('electron')
+                const result = await dialog.showSaveDialog(options)
+                return result
+            } catch (error) {
+                console.error('Failed to show save dialog:', error)
+                throw error
+            }
+        })
+
+        // IPC handler: Show open dialog
+        ipcMain.handle('backup:show-open-dialog', async (_event, options: any) => {
+            try {
+                const { dialog } = require('electron')
+                const result = await dialog.showOpenDialog(options)
+                return result
+            } catch (error) {
+                console.error('Failed to show open dialog:', error)
+                throw error
+            }
+        })
     }
 
     async init (): Promise<void> {

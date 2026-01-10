@@ -488,12 +488,21 @@ export class BaseTerminalTabComponent<P extends BaseTerminalProfile> extends Bas
         this.visibility$
             .pipe(debounce(visibility => interval(visibility ? 0 : INACTIVE_TAB_UNLOAD_DELAY)))
             .subscribe(visibility => {
-                if (this.frontend instanceof XTermFrontend) {
+                if (this.frontendIsReady && this.frontend instanceof XTermFrontend && this.frontend?.xterm) {
                     if (visibility) {
                         // this.frontend.resizeHandler()
                         const term = this.frontend.xterm as any
-                        term._core._renderService.clear()
-                        term._core._renderService.handleResize(term.cols, term.rows)
+                        if (term?._core?._renderService && typeof term._core._renderService.clear === 'function') {
+                            try {
+                                term._core._renderService.clear()
+                                if (typeof term._core._renderService.handleResize === 'function' && term.cols && term.rows) {
+                                    term._core._renderService.handleResize(term.cols, term.rows)
+                                }
+                            } catch (error) {
+                                // Ignore errors if render service is not fully initialized
+                                console.warn('Failed to clear/resize terminal render service:', error)
+                            }
+                        }
                     } else {
                         this.frontend.xterm.element?.querySelectorAll('canvas').forEach(c => {
                             c.height = c.width = 0

@@ -59,8 +59,15 @@ export class SettingsTabComponent extends BaseTabComponent {
         super(injector)
         this.setTitle(translate.instant(_('Settings')))
         this.settingsProviders = config.enabledServices(this.settingsProviders)
-        this.settingsProviders = this.settingsProviders.filter(x => !!x.getComponentType())
+        this.settingsProviders = this.settingsProviders.filter(x => {
+            const componentType = x.getComponentType()
+            if (!componentType) {
+                console.warn('Settings provider has no component type:', x.id, x.constructor.name)
+            }
+            return !!componentType
+        })
         this.settingsProviders.sort((a, b) => a.weight - b.weight + a.title.localeCompare(b.title))
+        console.log('Loaded settings providers:', this.settingsProviders.map(p => ({ id: p.id, title: p.title, component: p.getComponentType()?.name })))
 
         this.configDefaults = yaml.dump(config.getDefaults())
 

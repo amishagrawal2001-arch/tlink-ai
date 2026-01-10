@@ -1,0 +1,45 @@
+.content-box {
+    padding: 20px;
+}
+
+.list-group-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+        background-color: var(--theme-bg-more);
+    }
+
+    &.active {
+        background-color: var(--theme-accent, var(--theme-bg-more-2));
+        border-color: var(--theme-accent, var(--theme-bg-more-2));
+        color: var(--theme-fg-more-2);
+    }
+
+    h5 {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .badge {
+        font-size: 10px;
+        margin-right: 4px;
+    }
+}
+
+.btn-group-sm {
+    .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.alert {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+

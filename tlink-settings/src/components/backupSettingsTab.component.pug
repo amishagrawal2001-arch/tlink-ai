@@ -1,0 +1,144 @@
+.content-box
+    .container-fluid
+        h3 {{ 'Backup & Restore' | translate }}
+        p.text-muted {{ 'Automatically backup your configuration and workspaces. Restore from previous backups if needed.' | translate }}
+
+        // Settings Section
+        h4 {{ 'Backup Settings' | translate }}
+        .form-group
+            .form-check
+                input.form-check-input(
+                    type='checkbox',
+                    [id]='"enable-backups"',
+                    [(ngModel)]='backupConfig.enabled',
+                    (change)='toggleAutomaticBackups()'
+                )
+                label.form-check-label([for]='"enable-backups"')
+                    | {{ 'Enable automatic backups' | translate }}
+
+        .row(*ngIf='backupConfig.enabled')
+            .col-md-6
+                .form-group
+                    label {{ 'Backup interval (minutes)' | translate }}
+                    input.form-control(
+                        type='number',
+                        [(ngModel)]='backupConfig.interval',
+                        (blur)='updateBackupInterval()',
+                        min='1',
+                        step='1'
+                    )
+                    small.form-text.text-muted {{ 'How often to create automatic backups' | translate }}
+            .col-md-6
+                .form-group
+                    label {{ 'Retention period (days)' | translate }}
+                    input.form-control(
+                        type='number',
+                        [(ngModel)]='backupConfig.retention',
+                        (blur)='updateBackupRetention()',
+                        min='1',
+                        step='1'
+                    )
+                    small.form-text.text-muted {{ 'Backups older than this will be automatically deleted' | translate }}
+
+        h5.mt-3 {{ 'Include in backups' | translate }}
+        .form-group
+            .form-check
+                input.form-check-input(
+                    type='checkbox',
+                    [id]='"include-config"',
+                    [(ngModel)]='backupConfig.includeConfig',
+                    (change)='toggleIncludeConfig()'
+                )
+                label.form-check-label([for]='"include-config"')
+                    | {{ 'Configuration (settings, profiles, etc.)' | translate }}
+            .form-check
+                input.form-check-input(
+                    type='checkbox',
+                    [id]='"include-workspaces"',
+                    [(ngModel)]='backupConfig.includeWorkspaces',
+                    (change)='toggleIncludeWorkspaces()'
+                )
+                label.form-check-label([for]='"include-workspaces"')
+                    | {{ 'Workspaces' | translate }}
+            .form-check
+                input.form-check-input(
+                    type='checkbox',
+                    [id]='"include-profiles"',
+                    [(ngModel)]='backupConfig.includeProfiles',
+                    (change)='toggleIncludeProfiles()'
+                )
+                label.form-check-label([for]='"include-profiles"')
+                    | {{ 'Profiles' | translate }}
+
+        // Manual Backup Section
+        .mb-3.mt-4
+            h4 {{ 'Manual Backup' | translate }}
+            button.btn.btn-primary.mr-2(
+                (click)='createManualBackup()',
+                [disabled]='creatingBackup'
+            )
+                i.fas.fa-save.mr-2
+                | {{ creatingBackup ? ('Creating...' | translate) : ('Create Backup Now' | translate) }}
+            button.btn.btn-outline-primary.mr-2((click)='importBackup()')
+                i.fas.fa-upload.mr-2
+                | {{ 'Import Backup' | translate }}
+
+        // Statistics
+        .alert.alert-info(*ngIf='backups.length > 0')
+            .row
+                .col-md-3
+                    strong {{ 'Total Backups' | translate }}:
+                    br
+                    | {{ getBackupStats().totalBackups }}
+                .col-md-3
+                    strong {{ 'Total Size' | translate }}:
+                    br
+                    | {{ formatSize(getBackupStats().totalSize) }}
+                .col-md-3(*ngIf='getBackupStats().newestBackup')
+                    strong {{ 'Newest' | translate }}:
+                    br
+                    | {{ formatDate(getBackupStats().newestBackup!) }}
+                .col-md-3(*ngIf='getBackupStats().oldestBackup')
+                    strong {{ 'Oldest' | translate }}:
+                    br
+                    | {{ formatDate(getBackupStats().oldestBackup!) }}
+
+        // Backups List
+        h4.mt-4 {{ 'Backups' | translate }}
+        .list-group.mb-3
+            .list-group-item(
+                *ngFor='let backup of backups',
+                [class.active]='selectedBackup?.id === backup.id',
+                (click)='selectedBackup = backup'
+            )
+                .d-flex.w-100.justify-content-between
+                    div
+                        h5.mb-1
+                            | {{ 'Backup' | translate }} - {{ formatDate(backup.timestamp) }}
+                            small.text-muted.ml-2 {{ '(' + backup.id.substring(0, 8) + ')' }}
+                        p.mb-1.text-muted.small
+                            | {{ 'Size' | translate }}: {{ formatSize(backup.size) }}
+                            span.ml-2 {{ 'Checksum' | translate }}: {{ backup.checksum.substring(0, 16) }}...
+                        p.mb-0.small
+                            span.badge.badge-secondary.mr-1(*ngFor='let item of backup.metadata.items') {{ item }}
+                    .btn-group.btn-group-sm
+                        button.btn.btn-outline-success(
+                            (click)='restoreBackup(backup); $event.stopPropagation()',
+                            [disabled]='restoringBackup',
+                            [ngbTooltip]='"Restore this backup" | translate'
+                        )
+                            i.fas.fa-undo
+                        button.btn.btn-outline-info(
+                            (click)='exportBackup(backup); $event.stopPropagation()',
+                            [ngbTooltip]='"Export backup to file" | translate'
+                        )
+                            i.fas.fa-download
+                        button.btn.btn-outline-danger(
+                            (click)='deleteBackup(backup); $event.stopPropagation()',
+                            [ngbTooltip]='"Delete backup" | translate'
+                        )
+                            i.fas.fa-trash
+
+        .alert.alert-info(*ngIf='backups.length === 0')
+            | {{ 'No backups found. Create your first backup to get started.' | translate }}
+

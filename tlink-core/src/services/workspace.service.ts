@@ -21,14 +21,23 @@ export class WorkspaceService {
         log: LogService,
     ) {
         this.logger = log.create('workspace')
-        this.ensureWorkspacesConfig()
+        // Defer initialization until config is ready
+        this.config.ready$.toPromise().then(() => {
+            this.ensureWorkspacesConfig()
+        }).catch(error => {
+            this.logger.error('Failed to initialize workspace service:', error)
+        })
     }
 
     /**
      * Ensure workspaces array exists in config
      */
     private ensureWorkspacesConfig (): void {
-        if (!this.config.store.workspaces) {
+        if (!this.config.store || !this.config.store.workspaces) {
+            if (!this.config.store) {
+                this.logger.warn('Config store not ready, cannot ensure workspaces config')
+                return
+            }
             this.config.store.workspaces = []
         }
     }
@@ -38,6 +47,9 @@ export class WorkspaceService {
      */
     getWorkspaces (): Workspace[] {
         this.ensureWorkspacesConfig()
+        if (!this.config.store || !this.config.store.workspaces) {
+            return []
+        }
         return (this.config.store.workspaces as Workspace[]).map(w => ({
             ...w,
             createdAt: new Date(w.createdAt),
@@ -58,6 +70,10 @@ export class WorkspaceService {
      */
     async saveWorkspace (name: string, description?: string, shared: boolean = false, teamId?: string): Promise<Workspace> {
         this.ensureWorkspacesConfig()
+        
+        if (!this.config.store || !this.config.store.workspaces) {
+            throw new Error('Config store not ready, cannot save workspace')
+        }
 
         // Capture all tabs
         const tabs: RecoveryToken[] = []
@@ -132,6 +148,10 @@ export class WorkspaceService {
             return null
         }
 
+        if (!this.config.store || !this.config.store.workspaces) {
+            throw new Error('Config store not ready, cannot update workspace')
+        }
+
         const workspace = workspaces[index]
         const updated: Workspace = {
             ...workspace,
@@ -156,6 +176,10 @@ export class WorkspaceService {
         const index = workspaces.findIndex(w => w.id === id)
         if (index === -1) {
             return false
+        }
+
+        if (!this.config.store || !this.config.store.workspaces) {
+            throw new Error('Config store not ready, cannot delete workspace')
         }
 
         this.config.store.workspaces.splice(index, 1)
@@ -283,6 +307,13 @@ export class WorkspaceService {
                 isTemplate: false,
             }
 
+            if (!this.config.store || !this.config.store.workspaces) {
+                this.ensureWorkspacesConfig()
+                if (!this.config.store || !this.config.store.workspaces) {
+                    throw new Error('Config store not ready, cannot import workspace')
+                }
+            }
+
             this.config.store.workspaces.push(workspace)
             await this.config.save()
 
@@ -338,6 +369,13 @@ export class WorkspaceService {
                 updatedAt: new Date(),
                 tags: [],
                 isTemplate: false,
+            }
+
+            if (!this.config.store || !this.config.store.workspaces) {
+                this.ensureWorkspacesConfig()
+                if (!this.config.store || !this.config.store.workspaces) {
+                    throw new Error('Config store not ready, cannot import workspace from JSON')
+                }
             }
 
             this.config.store.workspaces.push(workspace)

@@ -73,3 +73,10 @@ hacks:
   enableFluentBackground: false
 language: null
 defaultQuickConnectProvider: "ssh"
+backup:
+  enabled: false
+  interval: 60
+  retention: 30
+  includeWorkspaces: true
+  includeConfig: true
+  includeProfiles: true

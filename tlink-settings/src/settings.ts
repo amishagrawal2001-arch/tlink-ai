@@ -6,6 +6,7 @@ import { VaultSettingsTabComponent } from './components/vaultSettingsTab.compone
 import { ConfigSyncSettingsTabComponent } from './components/configSyncSettingsTab.component'
 import { ProfilesSettingsTabComponent } from './components/profilesSettingsTab.component'
 import { WorkspaceSettingsTabComponent } from './components/workspaceSettingsTab.component'
+import { BackupSettingsTabComponent } from './components/backupSettingsTab.component'
 import { TranslateService } from 'tlink-core'
 
 /** @hidden */
@@ -91,5 +92,20 @@ export class ConfigSyncSettingsTabProvider extends SettingsTabProvider {
 
     getComponentType (): any {
         return ConfigSyncSettingsTabComponent
+    }
+}
+
+/** @hidden */
+@Injectable()
+export class BackupSettingsTabProvider extends SettingsTabProvider {
+    id = 'backup'
+    icon = 'hdd'
+    title = this.translate.instant('Backup & Restore')
+    weight = 5
+
+    constructor (private translate: TranslateService) { super() }
+
+    getComponentType (): any {
+        return BackupSettingsTabComponent
     }
 }
