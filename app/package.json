@@ -28,7 +28,7 @@
     "mz": "^2.7.0",
     "native-process-working-directory": "^1.0.2",
     "node-pty": "^1.1.0-beta39",
-    "npm": "6",
+    "npm": "11",
     "russh": "0.1.31",
     "rxjs": "^7.5.7",
     "source-map-support": "^0.5.20",
