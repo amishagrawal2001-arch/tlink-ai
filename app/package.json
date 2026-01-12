@@ -47,7 +47,7 @@
   "devDependencies": {
     "@ngx-translate/core": "^14.0.0",
     "@types/mz": "2.7.4",
-    "@types/node": "20.3.1",
+    "@types/node": "25.0.6",
     "@types/uuid": "^9.0.7",
     "@types/ws": "^8.5.10",
     "atomically": "^2.0.2",
