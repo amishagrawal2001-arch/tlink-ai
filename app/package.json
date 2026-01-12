@@ -49,12 +49,12 @@
     "@types/mz": "2.7.4",
     "@types/node": "20.3.1",
     "@types/uuid": "^9.0.7",
-    "@types/ws": "^8.5.10",
+    "@types/ws": "^8.18.1",
     "atomically": "^2.0.2",
     "filesize": "^9",
     "ngx-filesize": "^3.0.2",
     "uuid": "^9.0.1",
-    "ws": "^8.16.0"
+    "ws": "^8.19.0"
   },
   "peerDependencies": {
     "tlink-community-color-schemes": "*",
