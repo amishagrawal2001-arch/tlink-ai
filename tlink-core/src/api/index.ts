@@ -41,6 +41,7 @@ export { SidePanelService, SidePanelRegistration } from '../services/sidePanel.s
 export { LocaleService, TlinkFormatedDatePipe } from '../services/locale.service'
 export { WorkspaceService } from '../services/workspace.service'
 export { TranslateService } from '@ngx-translate/core'
+export { ProfileIconComponent } from '../components/profileIcon.component'
 export * from '../utils'
 export * from './workspace'
 export { UTF8Splitter } from '../utfSplitter'

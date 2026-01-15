@@ -27,6 +27,13 @@ const BUILTIN_CONNECTIONS_PANEL: SidePanelRegistration = {
     width: SESSION_MANAGER_WIDTH,
     mode: 'built-in',
 }
+const REMOTE_DESKTOP_PANEL: SidePanelRegistration = {
+    id: 'remote-desktop',
+    component: SessionManagerTabComponent,
+    label: 'Remote Desktop',
+    width: SESSION_MANAGER_WIDTH,
+    mode: null,
+}
 const COLOR_TEMPLATES_PANEL: SidePanelRegistration = {
     id: 'color-templates',
     component: ColorTemplatesPanelComponent,
@@ -47,6 +54,7 @@ export class SessionManagerCommandProvider extends CommandProvider {
         this.sidePanel.register(SESSION_MANAGER_PANEL)
         this.sidePanel.register(ACTIVE_CONNECTIONS_PANEL)
         this.sidePanel.register(BUILTIN_CONNECTIONS_PANEL)
+        this.sidePanel.register(REMOTE_DESKTOP_PANEL)
         this.sidePanel.register(COLOR_TEMPLATES_PANEL)
         this.app.tabsChanged$.subscribe(() => this.cleanupLegacyTabs())
         hostApp.sessionManagerRequest$.subscribe(() => {

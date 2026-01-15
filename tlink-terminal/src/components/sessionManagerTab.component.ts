@@ -96,6 +96,14 @@ export class SessionManagerTabComponent extends BaseTabComponentRuntime {
                 }
                 return
             }
+            if (state.id === 'remote-desktop') {
+                this.viewMode = 'built-in'
+                if (this.lastPanelId !== this.activePanelId) {
+                    this.lastPanelId = this.activePanelId
+                    void this.refreshProfiles()
+                }
+                return
+            }
             if (state.id === 'session-manager') {
                 this.viewMode = 'all'
                 if (this.lastPanelId !== this.activePanelId) {
@@ -130,7 +138,7 @@ export class SessionManagerTabComponent extends BaseTabComponentRuntime {
         if (this.activePanelId === 'active-connections') {
             return true
         }
-        if (this.activePanelId === 'built-in-connections') {
+        if (this.isBuiltInPanel() || this.isRemoteDesktopPanel()) {
             return false
         }
         return this.viewMode === 'connections'
@@ -140,7 +148,7 @@ export class SessionManagerTabComponent extends BaseTabComponentRuntime {
         if (this.activePanelId === 'active-connections') {
             return false
         }
-        if (this.activePanelId === 'built-in-connections') {
+        if (this.isBuiltInPanel() || this.isRemoteDesktopPanel()) {
             return true
         }
         return this.viewMode !== 'connections'
@@ -497,7 +505,7 @@ export class SessionManagerTabComponent extends BaseTabComponentRuntime {
         if (panelState.component === SessionManagerTabComponent && panelState.id) {
             this.activePanelId = panelState.id
         }
-        const includeBuiltIn = this.activePanelId === 'built-in-connections'
+        const includeBuiltIn = this.isBuiltInPanel() || this.isRemoteDesktopPanel()
         const groups = await this.profiles.getProfileGroups({ includeProfiles: true, includeNonUserGroup: includeBuiltIn })
         const normalized = groups.map(group => ({
             ...group,
@@ -505,10 +513,20 @@ export class SessionManagerTabComponent extends BaseTabComponentRuntime {
             profiles: group.profiles ?? [],
             collapsed: this.collapsedByGroupId[group.id ?? ''] ?? false,
         }))
-        if (this.activePanelId === 'built-in-connections') {
+        if (this.isBuiltInPanel()) {
             this.profileGroups = normalized.filter(group => this.isBuiltInGroup(group))
+        } else if (this.isRemoteDesktopPanel()) {
+            this.profileGroups = normalized
         } else {
             this.profileGroups = normalized.filter(group => !this.isBuiltInGroup(group))
+        }
+        if (this.isRemoteDesktopPanel()) {
+            this.profileGroups = this.profileGroups
+                .map(group => ({
+                    ...group,
+                    profiles: (group.profiles ?? []).filter(profile => profile.type === 'rdp' && !profile.isBuiltin),
+                }))
+                .filter(group => (group.profiles?.length ?? 0) > 0)
         }
         this.pruneSelections()
         this.applyFilter()
@@ -549,6 +567,14 @@ export class SessionManagerTabComponent extends BaseTabComponentRuntime {
             return true
         }
         return (group.profiles ?? []).some(profile => profile.isBuiltin)
+    }
+
+    private isBuiltInPanel (): boolean {
+        return this.activePanelId === 'built-in-connections'
+    }
+
+    private isRemoteDesktopPanel (): boolean {
+        return this.activePanelId === 'remote-desktop'
     }
 
     trackByConnection (_index: number, connection: SessionConnection): string {
@@ -664,10 +690,15 @@ export class SessionManagerTabComponent extends BaseTabComponentRuntime {
             this.filteredGroups = filtered
         }
 
-        if (this.activePanelId === 'built-in-connections') {
+        if (this.isBuiltInPanel()) {
             this.visibleGroups = this.filteredGroups.filter(group => this.isBuiltInGroup(group))
+        } else if (this.isRemoteDesktopPanel()) {
+            this.visibleGroups = this.filteredGroups
         } else {
             this.visibleGroups = this.filteredGroups.filter(group => !this.isBuiltInGroup(group))
+        }
+        if (this.isRemoteDesktopPanel()) {
+            this.visibleGroups = this.visibleGroups.filter(group => (group.profiles?.length ?? 0) > 0)
         }
     }
 

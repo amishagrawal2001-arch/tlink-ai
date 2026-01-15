@@ -67,6 +67,146 @@ export class Application {
             }
         })
 
+        // IPC handler: Get git status for a directory
+        ipcMain.handle('terminal-context:get-git-status', async (_event, directory: string) => {
+            try {
+                if (!directory || !fs.existsSync(directory)) {
+                    return null
+                }
+                
+                // Check if directory is a git repository by trying to get root
+                try {
+                    const rootResult = await exec('git rev-parse --show-toplevel', { cwd: directory })
+                    const gitRoot = rootResult[0].toString().trim()
+                    if (!gitRoot || !fs.existsSync(gitRoot)) {
+                        return null
+                    }
+                } catch {
+                    // Not a git repository
+                    return null
+                }
+
+                const results: any = {
+                    clean: true,
+                    modified: [],
+                    untracked: [],
+                    staged: [],
+                }
+
+                // Get current branch
+                try {
+                    const branchResult = await exec('git rev-parse --abbrev-ref HEAD', { cwd: directory })
+                    results.branch = branchResult[0].toString().trim()
+                } catch {
+                    results.branch = undefined
+                }
+
+                // Get commit hash
+                try {
+                    const commitResult = await exec('git rev-parse --short HEAD', { cwd: directory })
+                    results.commit = commitResult[0].toString().trim()
+                } catch {
+                    results.commit = undefined
+                }
+
+                // Get remote info
+                try {
+                    const remoteResult = await exec('git remote -v', { cwd: directory })
+                    const remoteLines = remoteResult[0].toString().trim().split('\n')
+                    if (remoteLines.length > 0 && remoteLines[0]) {
+                        const [name, url] = remoteLines[0].split(/\s+/)
+                        results.remote = { name, url }
+                    }
+                } catch {
+                    results.remote = undefined
+                }
+
+                // Get git status
+                try {
+                    const statusResult = await exec('git status --porcelain', { cwd: directory })
+                    const statusLines = statusResult[0].toString().trim().split('\n').filter(line => line.trim())
+                    
+                    for (const line of statusLines) {
+                        if (!line.trim()) continue
+                        
+                        const status = line.substring(0, 2)
+                        const file = line.substring(3).trim()
+                        
+                        // Handle untracked files
+                        if (status[0] === '?' && status[1] === '?') {
+                            results.untracked.push(file)
+                        } else {
+                            // Staged changes (index status)
+                            if (status[0] !== ' ' && status[0] !== '?') {
+                                if (status[0] === 'M' || status[0] === 'A' || status[0] === 'D' || status[0] === 'R') {
+                                    results.staged.push(file)
+                                }
+                            }
+                            // Working tree changes
+                            if (status[1] !== ' ' && status[1] !== '?') {
+                                if (status[1] === 'M' || status[1] === 'D') {
+                                    results.modified.push(file)
+                                }
+                            }
+                        }
+                    }
+
+                    results.clean = statusLines.length === 0
+                } catch {
+                    // Git status failed, assume clean
+                }
+
+                return results
+            } catch (error: any) {
+                console.error('Failed to get git status:', error)
+                return null
+            }
+        })
+
+        // IPC handler: Get file system context for a directory
+        ipcMain.handle('terminal-context:get-file-system-context', async (_event, directory: string) => {
+            try {
+                if (!directory || !fs.existsSync(directory)) {
+                    return null
+                }
+
+                const stat = fs.statSync(directory)
+                if (!stat.isDirectory()) {
+                    return null
+                }
+
+                const entries: Array<{ name: string, type: 'file' | 'directory' | 'symlink', size?: number }> = []
+                
+                const files = fs.readdirSync(directory)
+                for (const file of files) {
+                    const filePath = path.join(directory, file)
+                    try {
+                        const fileStat = fs.statSync(filePath)
+                        const entry: any = {
+                            name: file,
+                            type: fileStat.isDirectory() ? 'directory' : fileStat.isSymbolicLink() ? 'symlink' : 'file',
+                        }
+                        if (entry.type === 'file') {
+                            entry.size = fileStat.size
+                        }
+                        entries.push(entry)
+                    } catch {
+                        // Skip files we can't access
+                        continue
+                    }
+                }
+
+                return {
+                    path: directory,
+                    entries,
+                    modifiedFiles: [], // Could be enhanced to track modified files
+                }
+            } catch (error: any) {
+                console.error('Failed to get file system context:', error)
+                return null
+            }
+        })
+
         if (process.platform === 'linux') {
             app.commandLine.appendSwitch('no-sandbox')
             if ((this.configStore.appearance?.opacity || 1) !== 1) {

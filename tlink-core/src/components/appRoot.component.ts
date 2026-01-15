@@ -89,6 +89,9 @@ export class AppRootComponent implements OnInit {
     sidePanelWidth = 320
     sidePanelId = ''
     sidePanels: SidePanelRegistration[] = []
+    rightDockPanels: SidePanelRegistration[] = []
+    sshSidePanel: SidePanelRegistration | null = null
+    sshSidebarCommand: Command | null = null
     bottomPanelVisible = false
     bottomPanelComponent: Type<any> | null = null
     bottomPanelHeight = 0
@@ -212,6 +215,10 @@ export class AppRootComponent implements OnInit {
         })
         this.sidePanel.panels$.subscribe(panels => {
             this.sidePanels = panels.slice().sort((a, b) => a.label.localeCompare(b.label))
+            this.rightDockPanels = this.sidePanels.filter(panel => panel.id !== 'session-manager')
+            this.sshSidePanel = this.sidePanels.find(panel =>
+                panel.id?.toLowerCase().includes('ssh') || panel.label?.toLowerCase().includes('ssh'),
+            ) ?? null
         })
         this.bottomPanel.state$.subscribe(state => {
             this.bottomPanelVisible = state.visible
@@ -256,6 +263,20 @@ export class AppRootComponent implements OnInit {
 
     cycleColorSchemeFromDock (): void {
         this.cycleColorSchemeMode()
+    }
+
+    openSSHSidePanel (): void {
+        if (this.sshSidePanel) {
+            this.toggleSidePanel(this.sshSidePanel)
+            return
+        }
+        if (this.sshSidebarCommand?.run) {
+            this.sshSidebarCommand.run()
+            return
+        }
+        if (this.sshSidebarCommand?.id) {
+            this.commands.run(this.sshSidebarCommand.id, this.buildCommandContext())
+        }
     }
 
     get shouldShowBottomPanel (): boolean {
@@ -518,13 +539,32 @@ export class AppRootComponent implements OnInit {
     }
 
     private async getToolbarButtons (aboveZero: boolean): Promise<Command[]> {
-        const buttons = (await this.commands.getCommands({ tab: this.app.activeTab ?? undefined }))
+        const all = await this.commands.getCommands(this.buildCommandContext())
+        const sshCmd = all.find(x => x.label?.toLowerCase().includes('toggle ssh connections sidebar'))
+        if (sshCmd) {
+            this.sshSidebarCommand = sshCmd
+        }
+
+        const buttons = all
             .filter(x => x.locations?.includes(aboveZero ? CommandLocation.RightToolbar : CommandLocation.LeftToolbar))
+            .filter(x => !x.label?.toLowerCase().includes('toggle ssh connections sidebar'))
+
         if (!aboveZero) {
             return buttons
         }
         const settingsLabel = this.translate.instant('Settings')
         return buttons.filter(button => button.id !== 'core:cycle-color-scheme' && button.label !== settingsLabel)
+    }
+
+    private buildCommandContext (): CommandContext {
+        const ctx: CommandContext = {}
+        const tab = this.app.activeTab
+        if (tab instanceof SplitTabComponent) {
+            ctx.tab = tab.getFocusedTab() ?? undefined
+        } else if (tab) {
+            ctx.tab = tab
+        }
+        return ctx
     }
 
     toggleMaximize (): void {

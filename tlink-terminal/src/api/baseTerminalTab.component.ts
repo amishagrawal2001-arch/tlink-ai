@@ -204,6 +204,7 @@ export class BaseTerminalTabComponent<P extends BaseTerminalProfile> extends Bas
     private pendingOutputMax = 1024 * 256
     private outputHighlightingKey: string|null = null
     private outputHighlightingRules: OutputHighlightRule[] = []
+    private isDestroyed = false
 
     get input$ (): Observable<Buffer> {
         if (!this.frontend) {
@@ -584,6 +585,10 @@ export class BaseTerminalTabComponent<P extends BaseTerminalProfile> extends Bas
         if (!this.pendingOutput) {
             return
         }
+        if (this.isDestroyed) {
+            this.pendingOutput = ''
+            return
+        }
         const data = this.pendingOutput
         this.pendingOutput = ''
         this.write(data)
@@ -591,6 +596,9 @@ export class BaseTerminalTabComponent<P extends BaseTerminalProfile> extends Bas
 
     protected async writeRaw (data: string): Promise<void> {
         if (!this.frontend) {
+            if (this.isDestroyed) {
+                return
+            }
             throw new Error('Frontend not ready')
         }
 
@@ -696,6 +704,7 @@ export class BaseTerminalTabComponent<P extends BaseTerminalProfile> extends Bas
     /** @hidden */
     ngOnDestroy (): void {
         super.ngOnDestroy()
+        this.isDestroyed = true
         this.stopSpinner()
         if (this.pendingOutputFrame !== undefined) {
             window.cancelAnimationFrame(this.pendingOutputFrame)
@@ -705,6 +714,7 @@ export class BaseTerminalTabComponent<P extends BaseTerminalProfile> extends Bas
     }
 
     async destroy (): Promise<void> {
+        this.isDestroyed = true
         this.frontend?.detach(this.content.nativeElement)
         this.frontend?.destroy()
         this.frontend = undefined

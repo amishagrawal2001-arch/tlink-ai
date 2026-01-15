@@ -1,4 +1,4 @@
-import { NgModule } from '@angular/core'
+import { CUSTOM_ELEMENTS_SCHEMA, NgModule } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap'
@@ -70,6 +70,7 @@ import { HotkeySettingsTabProvider, WindowSettingsTabProvider, VaultSettingsTabP
         ReleaseNotesComponent,
         ShowSecretModalComponent,
     ],
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export default class SettingsModule {
     constructor (

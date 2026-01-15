@@ -99,7 +99,10 @@
                     (contextmenu)='openProfileContextMenu($event, profile)',
                     [class.selected]='isProfileSelected(profile)'
                 )
-                    i.fas.fa-plug.me-2
+                    profile-icon.me-2(
+                        [icon]='profile.icon',
+                        [color]='profile.color'
+                    )
                     .profile-main
                         .name {{profile.name}}
                         span.protocol {{profile.type | uppercase}}

@@ -11,7 +11,7 @@ title-bar(
     [class.tabs-on-left]='hasVerticalTabs() && config.store.appearance.tabsLocation == "left"',
     [class.tabs-titlebar-enabled]='isTitleBarNeeded()',
     [class.tabs-on-right]='hasVerticalTabs() && config.store.appearance.tabsLocation == "right"',
-    [class.has-right-dock]='sidePanels.length'
+    [class.has-right-dock]='rightDockPanels.length'
 )
     .left-dock
         .left-dock-section
@@ -20,6 +20,28 @@ title-bar(
                 (click)='openProfileSelector()',
                 ngbTooltip='Profiles'
             ) !{require('../icons/profiles.svg')}
+            button.left-dock-button(
+                type='button',
+                (click)='openSidePanelById("session-manager")',
+                [class.active]='sidePanelVisible && sidePanelId === "session-manager"',
+                ngbTooltip='Session manager'
+            )
+                i.fas.fa-list
+            button.left-dock-button(
+                type='button',
+                (click)='openSidePanelById("remote-desktop")',
+                [class.active]='sidePanelVisible && sidePanelId === "remote-desktop"',
+                ngbTooltip='Remote desktop'
+            )
+                i.fas.fa-desktop
+            button.left-dock-button(
+                *ngIf='sshSidePanel || sshSidebarCommand',
+                type='button',
+                (click)='openSSHSidePanel()',
+                [class.active]='sidePanelVisible && sidePanelId === sshSidePanel?.id',
+                [ngbTooltip]='(sshSidePanel?.label || sshSidebarCommand?.label || "SSH sidebar")'
+            )
+                i.fas.fa-terminal
             button.left-dock-button(
                 type='button',
                 (click)='openCodeEditor()',
@@ -56,10 +78,10 @@ title-bar(
                 (click)='cycleColorSchemeFromDock()',
                 ngbTooltip='Switch color scheme'
             ) !{require('../icons/color-scheme.svg')}
-    .right-dock(*ngIf='sidePanels.length')
+    .right-dock(*ngIf='rightDockPanels.length')
         .side-panel-tabs
             button.side-panel-toggle(
-                *ngFor='let panel of sidePanels',
+                *ngFor='let panel of rightDockPanels',
                 type='button',
                 (click)='toggleSidePanel(panel)',
                 (contextmenu)='openSidePanelMenu($event, panel)',
@@ -159,7 +181,7 @@ title-bar(
         div.window-controls-spacer(
             *ngIf='config.store.appearance.frame == "thin" && (hostApp.platform == Platform.Windows) && (config.store.appearance.tabsLocation == "top")',
         )
-    .content-body([class.has-side-panel-tabs]='sidePanels.length')
+    .content-body([class.has-side-panel-tabs]='rightDockPanels.length')
         .workspace-stack
             .workspace
                 .workspace-main

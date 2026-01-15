@@ -385,7 +385,6 @@ export class BackupService {
 
         // Temporarily disable automatic backups during restore to prevent additional backups
         const wasAutomaticEnabled = this.backupConfig.enabled
-        const hadInterval = !!this.backupInterval
         if (wasAutomaticEnabled) {
             this.stopAutomaticBackups()
             this.logger.info('Temporarily disabled automatic backups during restore')

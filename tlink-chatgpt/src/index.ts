@@ -2,6 +2,7 @@
 import { CommonModule } from '@angular/common'
 import { NgModule, Injectable } from '@angular/core'
 import { FormsModule } from '@angular/forms'
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import TlinkCorePlugin, { AppService, Command, CommandProvider, ConfigProvider, ProfileProvider, SplitTabComponent } from 'tlink-core'
 
 import { ChatTabComponent } from './components/chatTab.component'
@@ -63,6 +64,7 @@ export class ChatGPTCommandProvider extends CommandProvider {
     imports: [
         CommonModule,
         FormsModule,
+        NgbModule,
         TlinkCorePlugin,
     ],
     providers: [

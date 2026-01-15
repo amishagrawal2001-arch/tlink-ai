@@ -2048,6 +2048,22 @@ export class CodeEditorTabComponent extends BaseTabComponent implements AfterVie
             wordWrap: this.wordWrapEnabled ? 'on' : 'off',
             fontSize: this.fontSize,
             lineHeight: this.lineHeight,
+            // Enable code completion features
+            quickSuggestions: {
+                other: true,
+                comments: true,
+                strings: true,
+            },
+            suggestOnTriggerCharacters: true,
+            acceptSuggestionOnEnter: 'on',
+            tabCompletion: 'on',
+            wordBasedSuggestions: 'matchingDocuments',
+            parameterHints: {
+                enabled: true,
+            },
+            hover: {
+                enabled: true,
+            },
         }
     }
 

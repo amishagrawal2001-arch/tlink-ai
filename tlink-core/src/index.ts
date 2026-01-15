@@ -284,7 +284,16 @@ export { ShareSessionModalComponent } from './components/shareSessionModal.compo
 export { WorkspaceService } from './services/workspace.service'
 export { SessionSharingService } from './services/sessionSharing.service'
 export { BackupService, Backup, BackupConfig } from './services/backup.service'
+export { TerminalContextService } from './services/terminalContext.service'
+export { TerminalOutputAnalyzerService } from './services/terminalOutputAnalyzer.service'
+export { CommandSuggestionEngineService } from './services/commandSuggestionEngine.service'
+export { ScriptGeneratorService } from './services/scriptGenerator.service'
+export { CodeEditorTabComponent } from './components/codeEditorTab.component'
 export * from './api/workspace'
+export * from './services/terminalContext.service'
+export * from './services/terminalOutputAnalyzer.service'
+export * from './services/commandSuggestionEngine.service'
+export * from './services/scriptGenerator.service'
 
 // Deprecations
 export { ToolbarButton as IToolbarButton } from './api'
