@@ -53,7 +53,7 @@
     "atomically": "^2.0.2",
     "filesize": "^9",
     "ngx-filesize": "^3.0.2",
-    "uuid": "^9.0.1",
+    "uuid": "^13.0.0",
     "ws": "^8.16.0"
   },
   "peerDependencies": {
