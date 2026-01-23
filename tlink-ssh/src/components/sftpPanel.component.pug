@@ -1,27 +1,26 @@
 .resize-handle((mousedown)='startResize($event)')
 .header
-    input.form-control.flex-grow-1.w-0(
-        *ngIf='editingPath !== null',
-        type='text',
-        autofocus,
-        (keydown.enter)='confirmPath()',
-        (keydown.esc)='editingPath = null',
-        (blur)='editingPath = null',
-        [(ngModel)]='editingPath'
-    )
-    .breadcrumb(*ngIf='editingPath === null', (dblclick)='editPath()')
-        a.breadcrumb-item.text-decoration-none((click)='navigate("/")') SFTP
-        a.breadcrumb-item.text-decoration-none(
-            *ngFor='let segment of pathSegments',
-            (click)='navigate(segment.path)'
-        ) {{segment.name}}
+    .path-section.flex-grow-1.d-flex.align-items-center
+        input.form-control.path-input(
+            *ngIf='editingPath !== null',
+            type='text',
+            autofocus,
+            (keydown.enter)='confirmPath()',
+            (keydown.esc)='editingPath = null',
+            (blur)='editingPath = null',
+            [(ngModel)]='editingPath'
+        )
+        .breadcrumb(*ngIf='editingPath === null', (dblclick)='editPath()')
+            a.breadcrumb-item.text-decoration-none((click)='navigate("/")') SFTP
+            a.breadcrumb-item.text-decoration-none(
+                *ngFor='let segment of pathSegments',
+                (click)='navigate(segment.path)'
+            ) {{segment.name}}
 
-    .breadcrumb-spacer.flex-grow-1.h-100((dblclick)='editPath()')
-
-    button.btn.btn-link.btn-sm.path-button(*ngIf='editingPath === null', (click)='editPath()')
+    button.btn.btn-link.btn-sm.path-button(*ngIf='editingPath === null', (click)='editPath()', [title]='path')
         i.fas.fa-edit.me-1
-        span.path-label Path
-        span.path-value {{path}}
+        span.path-label Path:
+        span.path-value {{path || '/'}}
 
     button.btn.btn-link.btn-sm.flex-shrink-0.d-flex(*ngIf='!showFilter', (click)='showFilter = true')
         i.fas.fa-filter.me-1
@@ -67,7 +66,10 @@
 
     div(*ngIf='!sftp', translate) Connecting
     div(*ngIf='sftp')
-        div(*ngIf='fileList === null', translate) Loading
+        div(*ngIf='fileList === null || isNavigating')
+            span(translate) Loading...
+            span.text-warning.ms-2(*ngIf='navigationWarning')
+                | Taking longer than expected...
         .list-group.list-group-light(*ngIf='fileList !== null')
             .list-group-item.list-group-item-action.d-flex.align-items-center(
                 *ngIf='path !== "/" && (!showFilter || filterText.trim() === "")',

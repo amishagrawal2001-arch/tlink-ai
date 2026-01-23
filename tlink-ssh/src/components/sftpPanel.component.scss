@@ -18,6 +18,18 @@
         display: flex;
         align-items: center;
         flex: none;
+        gap: 10px;
+        position: relative;
+    }
+
+    > .header .path-section {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    > .header .path-input {
+        width: 100%;
+        min-width: 200px;
     }
 
     > .filter-bar {
@@ -34,50 +46,74 @@
         background: none;
         padding: 0;
         margin: 0;
-        color: #cfd6dd;
+        color: #e8edf3;
+        font-weight: 500;
     }
 
     .breadcrumb-item {
         cursor: pointer;
         color: inherit;
+        font-size: 13px;
     }
 
     .breadcrumb-item a {
         color: inherit;
     }
 
+    .breadcrumb-item:hover {
+        color: #fff;
+        text-decoration: underline;
+    }
+
     .breadcrumb-item + .breadcrumb-item::before {
-        color: #8a97a4;
+        color: #a0aeb8;
+        font-weight: 600;
     }
 
     .path-button {
         display: inline-flex;
         align-items: center;
-        background: rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.2);
         border-radius: 4px;
-        padding: 2px 8px;
-        color: #cfd6dd;
-        max-width: 320px;
-        min-width: 0;
+        padding: 6px 12px;
+        color: #fff;
+        max-width: 500px;
+        min-width: 250px;
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        overflow: visible;
+        font-weight: 500;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
+        margin-left: 10px;
     }
 
     .path-button:hover {
-        background: rgba(255, 255, 255, 0.12);
-        color: #fff;
+        background: rgba(255, 255, 255, 0.22);
+        border-color: rgba(255, 255, 255, 0.35);
     }
 
     .path-button .path-label {
-        opacity: 0.7;
-        margin-right: 6px;
+        opacity: 1;
+        margin-right: 10px;
+        font-weight: 700;
+        font-size: 13px;
+        color: #fff;
+        flex-shrink: 0;
     }
 
     .path-button .path-value {
-        font-family: monospace;
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        font-size: 14px;
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        flex: 1;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .breadcrumb-item:first-child {

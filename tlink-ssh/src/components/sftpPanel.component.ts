@@ -31,6 +31,11 @@ export class SFTPPanelComponent implements OnDestroy {
     editingPath: string|null = null
     showFilter = false
     filterText = ''
+    isNavigating = false // Track if navigation is in progress
+    navigationWarning = false // Show warning if operation is taking too long
+    private navigationAbortController: AbortController|null = null
+    private sftpClosedSubscription: any = null
+    private warningTimeoutId: NodeJS.Timeout | null = null
     private resizeStartY: number|null = null
     private resizeStartHeight = 0
     private resizeMoveHandler: ((event: MouseEvent) => void)|null = null
@@ -49,6 +54,18 @@ export class SFTPPanelComponent implements OnDestroy {
     async ngOnInit (): Promise<void> {
         try {
             this.sftp = await this.session.openSFTP()
+            
+            // Subscribe to SFTP session closure to prevent hanging operations
+            this.sftpClosedSubscription = this.sftp.closed$.subscribe(() => {
+                if (this.isNavigating) {
+                    this.isNavigating = false
+                    if (this.navigationAbortController) {
+                        this.navigationAbortController.abort()
+                        this.navigationAbortController = null
+                    }
+                    this.notifications.error('SFTP session was closed')
+                }
+            })
         } catch (error) {
             const message = error?.message ?? 'Failed to open SFTP session.'
             console.warn('Failed to open SFTP session:', error)
@@ -68,12 +85,60 @@ export class SFTPPanelComponent implements OnDestroy {
 
     ngOnDestroy (): void {
         this.stopResize()
+        // Cancel any ongoing navigation
+        if (this.navigationAbortController) {
+            this.navigationAbortController.abort()
+            this.navigationAbortController = null
+        }
+        // Clear all timeouts
+        if (this.warningTimeoutId) {
+            clearTimeout(this.warningTimeoutId)
+            this.warningTimeoutId = null
+        }
+        this.isNavigating = false
+        this.navigationWarning = false
+        // Unsubscribe from SFTP closed events
+        if (this.sftpClosedSubscription) {
+            this.sftpClosedSubscription.unsubscribe()
+            this.sftpClosedSubscription = null
+        }
     }
 
     async navigate (newPath: string, fallbackOnError = true): Promise<void> {
+        // Cancel any ongoing navigation
+        if (this.navigationAbortController) {
+            this.navigationAbortController.abort()
+        }
+        this.navigationAbortController = new AbortController()
+        const abortSignal = this.navigationAbortController.signal
+
+        // Validate path before proceeding
+        if (!newPath || typeof newPath !== 'string' || newPath.trim() === '') {
+            this.notifications.error('Invalid path provided')
+            this.isNavigating = false
+            this.navigationAbortController = null
+            return
+        }
+
+        // Check if SFTP session is available
+        if (!this.sftp) {
+            this.notifications.error('SFTP session is not available')
+            this.isNavigating = false
+            this.navigationAbortController = null
+            return
+        }
+
+        this.isNavigating = true
         const previousPath = this.path
-        this.path = newPath
+        
+        // Normalize path
+        const normalizedPath = newPath.trim()
+        this.path = normalizedPath
         this.pathChange.next(this.path)
+        
+        // Force UI update to show loading state immediately
+        // Use setTimeout to ensure the UI updates before the blocking operation
+        await new Promise(resolve => setTimeout(resolve, 0))
 
         this.clearFilter()
 
@@ -89,13 +154,157 @@ export class SFTPPanelComponent implements OnDestroy {
 
         this.fileList = null
         this.filteredFileList = []
+
+        let timeoutId: NodeJS.Timeout | null = null
+        let readdirPromise: Promise<SFTPFile[]> | null = null
+        
         try {
-            this.fileList = await this.sftp.readdir(this.path)
-        } catch (error) {
-            this.notifications.error(error.message)
-            if (previousPath && fallbackOnError) {
-                this.navigate(previousPath, false)
+            // Double-check SFTP session is still available
+            if (!this.sftp) {
+                throw new Error('SFTP session is not available')
             }
+            
+            // Check if navigation was aborted before starting
+            if (abortSignal.aborted) {
+                this.isNavigating = false
+                this.navigationAbortController = null
+                return
+            }
+            
+            // Show warning after 2 seconds if operation is still pending
+            this.navigationWarning = false
+            this.warningTimeoutId = setTimeout(() => {
+                if (this.isNavigating && !abortSignal.aborted) {
+                    this.navigationWarning = true
+                }
+            }, 2000) // Show warning after 2 seconds
+            
+            // Add timeout wrapper around readdir to prevent hanging
+            // Start the readdir operation
+            readdirPromise = this.sftp.readdir(this.path)
+            
+            // Create timeout promise that will reject after 5 seconds
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    // Force rejection even if readdir is still pending
+                    reject(new Error(`SFTP operation timed out after 5 seconds. The path "${this.path}" may be invalid or the server is unresponsive. Please check the path and try again.`))
+                }, 5000) // 5 second timeout
+            })
+
+            // Use Promise.race to ensure timeout works - this will reject if timeout occurs
+            // Wrap both promises to ensure proper cleanup
+            const wrappedReaddir = readdirPromise.then(result => {
+                // Clear timeouts if readdir succeeded
+                if (timeoutId) {
+                    clearTimeout(timeoutId)
+                    timeoutId = null
+                }
+                if (this.warningTimeoutId) {
+                    clearTimeout(this.warningTimeoutId)
+                    this.warningTimeoutId = null
+                }
+                this.navigationWarning = false
+                return result
+            }).catch(err => {
+                // Clear timeouts on error
+                if (timeoutId) {
+                    clearTimeout(timeoutId)
+                    timeoutId = null
+                }
+                if (this.warningTimeoutId) {
+                    clearTimeout(this.warningTimeoutId)
+                    this.warningTimeoutId = null
+                }
+                this.navigationWarning = false
+                throw err
+            })
+            
+            const wrappedTimeout = timeoutPromise.catch(err => {
+                // Timeout triggered - ensure cleanup
+                if (timeoutId) {
+                    clearTimeout(timeoutId)
+                    timeoutId = null
+                }
+                if (this.warningTimeoutId) {
+                    clearTimeout(this.warningTimeoutId)
+                    this.warningTimeoutId = null
+                }
+                this.navigationWarning = false
+                throw err
+            })
+            
+            const result = await Promise.race([wrappedReaddir, wrappedTimeout])
+            
+            // Check if navigation was aborted (double-check after await)
+            if (abortSignal.aborted || !this.sftp) {
+                this.isNavigating = false
+                this.navigationAbortController = null
+                return
+            }
+            
+            // Verify we got a valid result
+            if (!result || !Array.isArray(result)) {
+                throw new Error('Invalid response from SFTP server')
+            }
+            
+            this.fileList = result
+        } catch (error) {
+            // Clear all timeouts in case of error
+            if (timeoutId) {
+                clearTimeout(timeoutId)
+                timeoutId = null
+            }
+            if (this.warningTimeoutId) {
+                clearTimeout(this.warningTimeoutId)
+                this.warningTimeoutId = null
+            }
+            this.navigationWarning = false
+            
+            // Don't show error if navigation was cancelled
+            if (abortSignal.aborted) {
+                this.isNavigating = false
+                this.navigationAbortController = null
+                return
+            }
+            
+            // Force UI update to show error state
+            await new Promise(resolve => setTimeout(resolve, 0))
+            
+            const errorMessage = error?.message ?? 'Failed to read directory'
+            this.notifications.error(errorMessage)
+            
+            // Reset to previous path if available
+            if (previousPath && fallbackOnError && previousPath !== this.path) {
+                // Reset navigating flag before recursive call
+                this.isNavigating = false
+                this.navigationAbortController = null
+                // Use setTimeout to allow UI to update before navigating back
+                setTimeout(() => {
+                    this.navigate(previousPath, false).catch(() => {
+                        // Ignore errors in fallback navigation
+                    })
+                }, 100)
+                return
+            }
+            this.isNavigating = false
+            this.navigationAbortController = null
+            return
+        } finally {
+            // Ensure all timeouts are cleared
+            if (timeoutId) {
+                clearTimeout(timeoutId)
+                timeoutId = null
+            }
+            if (this.warningTimeoutId) {
+                clearTimeout(this.warningTimeoutId)
+                this.warningTimeoutId = null
+            }
+        }
+
+        // Check again if navigation was aborted after readdir
+        if (abortSignal.aborted) {
+            this.isNavigating = false
+            this.navigationAbortController = null
             return
         }
 
@@ -105,6 +314,9 @@ export class SFTPPanelComponent implements OnDestroy {
             a.name.localeCompare(b.name))
 
         this.updateFilteredList()
+        this.isNavigating = false
+        this.navigationWarning = false
+        this.navigationAbortController = null
     }
 
     getFileType (fileExtension: string): string {
@@ -386,12 +598,17 @@ export class SFTPPanelComponent implements OnDestroy {
         this.editingPath = this.path
     }
 
-    confirmPath (): void {
+    async confirmPath (): Promise<void> {
         if (this.editingPath === null) {
             return
         }
-        this.navigate(this.editingPath)
-        this.editingPath = null
+        const pathToNavigate = this.editingPath
+        this.editingPath = null // Clear editing state immediately for better UX
+        try {
+            await this.navigate(pathToNavigate)
+        } catch (error) {
+            // Error already handled in navigate()
+        }
     }
 
     close (): void {
